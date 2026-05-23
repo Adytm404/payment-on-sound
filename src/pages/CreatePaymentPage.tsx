@@ -78,15 +78,15 @@ export default function CreatePaymentPage() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col gap-3 px-5 pb-4 pt-5">
+    <div className="flex flex-1 flex-col gap-5 px-5 pb-6 pt-6">
       <Header back title="Terima Pembayaran" subtitle="Buat QRIS sesuai nominal" />
 
       {/* Amount display */}
-      <section className="flex flex-col items-center gap-2 py-1 text-center">
+      <section className="flex flex-col items-center gap-4 py-3 text-center">
         <img
           src="/qris-logo.svg"
           alt="QRIS"
-          className="h-10 w-auto"
+          className="h-12 w-auto"
         />
         <div className="flex flex-col items-center gap-2">
         <p className="text-xs font-semibold text-ink-muted">Nominal pembayaran</p>
@@ -115,7 +115,7 @@ export default function CreatePaymentPage() {
           </p>
         )}
 
-        <div className="mt-1 flex flex-wrap justify-center gap-2">
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
           {[10_000, 25_000, 50_000, 100_000].map((n) => (
             <button
               key={n}
@@ -151,12 +151,12 @@ export default function CreatePaymentPage() {
       </section>
 
       {/* Payment button */}
-      <div className="sticky bottom-3 mt-auto pb-1">
+      <div className="sticky bottom-4 mt-auto pb-2">
         <button
           type="button"
           onClick={handleGenerate}
           disabled={loading || tooLow || tooHigh}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-3.5 text-base font-extrabold text-white shadow-card transition active:scale-[0.98] disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-4 text-base font-extrabold text-white shadow-card transition active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? (
             <>
