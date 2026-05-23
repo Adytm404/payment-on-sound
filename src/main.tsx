@@ -6,6 +6,7 @@ import App from "./App";
 import { AppProvider } from "./store/AppContext";
 import { AuthProvider } from "./store/AuthContext";
 import { ProtectedRoute, PublicOnlyRoute } from "./components/ProtectedRoute";
+import { ToastHost } from "./components/Toast";
 
 import DashboardPage from "./pages/DashboardPage";
 import CreatePaymentPage from "./pages/CreatePaymentPage";
@@ -43,6 +44,7 @@ createRoot(document.getElementById("root")!).render(
             </Route>
           </Route>
         </Routes>
+        <ToastHost />
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

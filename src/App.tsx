@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "@/components/BottomNav";
-import { ToastHost } from "@/components/Toast";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useRealtime } from "@/hooks/useRealtime";
 
@@ -14,7 +13,6 @@ export default function App() {
       <ScrollToTop />
       <Outlet />
       {!hideBottomNav ? <BottomNav /> : null}
-      <ToastHost />
     </div>
   );
 }

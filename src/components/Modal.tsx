@@ -26,7 +26,7 @@ export function Modal({ open, onClose, title, description, children }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
       <button
         type="button"
         aria-label="Tutup"

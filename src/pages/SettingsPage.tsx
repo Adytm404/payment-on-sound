@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { useApp } from "@/store/AppContext";
@@ -11,6 +12,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/store/AuthContext";
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const { config, saveConfig, refresh } = useApp();
   const { logout } = useAuth();
 
@@ -104,11 +106,13 @@ export default function SettingsPage() {
     setConfirmAction(null);
     storage.clearAll();
     logout();
+    navigate("/login", { replace: true });
   };
 
   const handleLogout = () => {
     setConfirmAction(null);
     logout();
+    navigate("/login", { replace: true });
   };
 
   return (

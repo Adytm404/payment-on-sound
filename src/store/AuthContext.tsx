@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearToken();
     setUser(null);
+    setLoading(false);
   }, []);
 
   const value = useMemo<AuthContextValue>(
