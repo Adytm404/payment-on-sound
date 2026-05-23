@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           BigInt        @id @default(autoincrement())
+  name         String        @db.VarChar(100)
+  email        String        @unique @db.VarChar(191)
+  passwordHash String        @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  settings     UserSettings?
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model UserSettings {
+  id             BigInt   @id @default(autoincrement())
+  userId         BigInt   @unique @map("user_id")
+  merchantName   String   @default("Merchant") @map("merchant_name") @db.VarChar(100)
+  pakasirProject String   @default("") @map("pakasir_project") @db.VarChar(100)
+  pakasirApiKey  String   @map("pakasir_api_key") @db.Text
+  sandbox        Boolean  @default(true)
+  ttsEnabled     Boolean  @default(true) @map("tts_enabled")
+  ttsVoiceURI    String   @default("") @map("tts_voice_uri") @db.VarChar(255)
+  ttsRate        Decimal  @default(1.00) @map("tts_rate") @db.Decimal(3, 2)
+  ttsPitch       Decimal  @default(1.00) @map("tts_pitch") @db.Decimal(3, 2)
+  ttsVolume      Decimal  @default(1.00) @map("tts_volume") @db.Decimal(3, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model Transaction {
+  id            BigInt            @id @default(autoincrement())
+  userId        BigInt            @map("user_id")
+  orderId       String            @map("order_id") @db.VarChar(64)
+  description   String?           @db.VarChar(255)
+  amount        Int
+  fee           Int               @default(0)
+  totalPayment  Int               @map("total_payment")
+  paymentNumber String            @map("payment_number") @db.Text
+  paymentMethod String            @default("qris") @map("payment_method") @db.VarChar(50)
+  status        TransactionStatus @default(pending)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  expiredAt     DateTime          @map("expired_at")
+  completedAt   DateTime?         @map("completed_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orderId], map: "transactions_user_order_id_key")
+  @@index([userId, orderId], map: "idx_user_order_id")
+  @@index([userId, status, createdAt], map: "idx_user_status_created")
+  @@index([userId, createdAt], map: "idx_user_created")
+  @@index([userId, amount], map: "idx_user_amount")
+  @@index([userId, totalPayment], map: "idx_user_total_payment")
+  @@map("transactions")
+}
+
+enum TransactionStatus {
+  pending
+  completed
+  cancelled
+  expired
+  failed
+}

@@ -1,0 +1,115 @@
+import type { TransactionStatus } from "./pakasir";
+
+export type StoredTransaction = {
+  orderId: string;
+  description?: string;
+  amount: number;
+  fee: number;
+  totalPayment: number;
+  paymentNumber: string;
+  paymentMethod: string;
+  status: TransactionStatus;
+  createdAt: string;
+  expiredAt: string;
+  completedAt?: string | null;
+};
+
+export type AppConfig = {
+  project: string;
+  apiKey: string;
+  sandbox: boolean;
+  merchantName: string;
+  ttsEnabled: boolean;
+  ttsVoiceURI: string;
+  ttsRate: number;
+  ttsPitch: number;
+  ttsVolume: number;
+};
+
+const KEYS = {
+  transactions: "pos:transactions",
+  config: "pos:config",
+} as const;
+
+const DEFAULT_CONFIG: AppConfig = {
+  project: "",
+  apiKey: "",
+  sandbox: true,
+  merchantName: "Merchant",
+  ttsEnabled: true,
+  ttsVoiceURI: "",
+  ttsRate: 1,
+  ttsPitch: 1,
+  ttsVolume: 1,
+};
+
+function safeParse<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+export const storage = {
+  // Transactions
+  listTransactions(): StoredTransaction[] {
+    if (typeof localStorage === "undefined") return [];
+    return safeParse<StoredTransaction[]>(
+      localStorage.getItem(KEYS.transactions),
+      [],
+    );
+  },
+
+  getTransaction(orderId: string): StoredTransaction | undefined {
+    return storage.listTransactions().find((t) => t.orderId === orderId);
+  },
+
+  upsertTransaction(tx: StoredTransaction) {
+    const all = storage.listTransactions();
+    const idx = all.findIndex((t) => t.orderId === tx.orderId);
+    if (idx === -1) all.unshift(tx);
+    else all[idx] = { ...all[idx], ...tx };
+    localStorage.setItem(KEYS.transactions, JSON.stringify(all));
+  },
+
+  updateTransaction(
+    orderId: string,
+    patch: Partial<StoredTransaction>,
+  ): StoredTransaction | undefined {
+    const all = storage.listTransactions();
+    const idx = all.findIndex((t) => t.orderId === orderId);
+    if (idx === -1) return undefined;
+    all[idx] = { ...all[idx], ...patch };
+    localStorage.setItem(KEYS.transactions, JSON.stringify(all));
+    return all[idx];
+  },
+
+  removeTransaction(orderId: string) {
+    const all = storage.listTransactions().filter((t) => t.orderId !== orderId);
+    localStorage.setItem(KEYS.transactions, JSON.stringify(all));
+  },
+
+  clearTransactions() {
+    localStorage.removeItem(KEYS.transactions);
+  },
+
+  // Config
+  getConfig(): AppConfig {
+    if (typeof localStorage === "undefined") return DEFAULT_CONFIG;
+    return {
+      ...DEFAULT_CONFIG,
+      ...safeParse<Partial<AppConfig>>(localStorage.getItem(KEYS.config), {}),
+    };
+  },
+
+  saveConfig(config: AppConfig) {
+    localStorage.setItem(KEYS.config, JSON.stringify(config));
+  },
+
+  clearAll() {
+    localStorage.removeItem(KEYS.transactions);
+    localStorage.removeItem(KEYS.config);
+  },
+};
