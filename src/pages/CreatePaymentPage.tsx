@@ -78,22 +78,22 @@ export default function CreatePaymentPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-5 px-5 pb-6 pt-6">
+    <div className="payment-screen">
       <Header back title="Terima Pembayaran" subtitle="Buat QRIS sesuai nominal" />
 
       {/* Amount display */}
-      <section className="flex flex-col items-center gap-4 py-3 text-center">
+      <section className="payment-amount-block">
         <img
           src="/qris-logo.svg"
           alt="QRIS"
-          className="h-12 w-auto"
+          className="payment-qris-logo"
         />
         <div className="flex flex-col items-center gap-2">
         <p className="text-xs font-semibold text-ink-muted">Nominal pembayaran</p>
         <div className="flex items-baseline gap-1">
           <span className="text-xl font-semibold text-ink-muted">Rp</span>
           <span
-            className={`text-5xl font-extrabold leading-none tabular-nums transition ${
+            className={`payment-amount-text ${
               tooHigh ? "text-rose-600" : tooLow ? "text-ink-soft" : "text-ink"
             } ${shakeAmount ? "animate-shake" : ""}`}
             onAnimationEnd={() => setShakeAmount(false)}
@@ -156,7 +156,7 @@ export default function CreatePaymentPage() {
           type="button"
           onClick={handleGenerate}
           disabled={loading || tooLow || tooHigh}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-4 text-base font-extrabold text-white shadow-card transition active:scale-[0.98] disabled:opacity-50"
+          className="payment-submit inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-4 text-base font-extrabold text-white shadow-card transition active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? (
             <>

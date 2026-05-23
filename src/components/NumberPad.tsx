@@ -28,13 +28,13 @@ const KEYS: Array<{ key: Key; label?: string; icon?: string }> = [
 
 export function NumberPad({ onPress, className = "" }: Props) {
   return (
-    <div className={`grid grid-cols-3 gap-3 ${className}`}>
+    <div className={`numberpad-grid ${className}`}>
       {KEYS.map(({ key, label, icon }) => (
         <button
           key={key}
           type="button"
           onClick={() => onPress(key)}
-          className="flex h-16 items-center justify-center rounded-[1.35rem] border border-white/70 bg-white/85 text-xl font-bold text-ink shadow-soft backdrop-blur transition hover:bg-white active:scale-95 active:bg-surface-dim"
+          className="numberpad-key"
         >
           {icon ? <Icon name={icon} size={22} /> : label}
         </button>

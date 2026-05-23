@@ -90,6 +90,90 @@
     @apply rounded-[1.75rem] border border-white/70 bg-white/65 shadow-soft backdrop-blur;
   }
 
+  .payment-screen {
+    @apply flex min-h-dvh flex-col gap-5 px-5 pb-6 pt-6;
+  }
+
+  .payment-amount-block {
+    @apply flex flex-col items-center gap-4 py-3 text-center;
+  }
+
+  .payment-qris-logo {
+    @apply h-12 w-auto;
+  }
+
+  .payment-amount-text {
+    @apply text-5xl font-extrabold leading-none tabular-nums transition;
+  }
+
+  .numberpad-grid {
+    @apply grid grid-cols-3 gap-3;
+  }
+
+  .numberpad-key {
+    @apply flex h-16 items-center justify-center rounded-[1.35rem] border border-white/70 bg-white/85 text-xl font-bold text-ink shadow-soft backdrop-blur transition hover:bg-white active:scale-95 active:bg-surface-dim;
+  }
+
+  @media (max-height: 760px) {
+    .payment-screen {
+      @apply gap-4 pb-4 pt-5;
+    }
+
+    .payment-amount-block {
+      @apply gap-3 py-1;
+    }
+
+    .payment-qris-logo {
+      @apply h-10;
+    }
+
+    .payment-amount-text {
+      @apply text-[2.65rem];
+    }
+
+    .numberpad-grid {
+      @apply gap-2.5;
+    }
+
+    .numberpad-key {
+      @apply h-14 rounded-[1.25rem];
+    }
+
+    .payment-screen .input {
+      @apply py-3;
+    }
+
+    .payment-submit {
+      @apply py-3.5;
+    }
+  }
+
+  @media (max-height: 680px) {
+    .payment-screen {
+      @apply gap-3 pb-3 pt-4;
+    }
+
+    .payment-amount-block {
+      @apply gap-2 py-0;
+    }
+
+    .payment-qris-logo {
+      @apply h-9;
+    }
+
+    .payment-amount-text {
+      @apply text-[2.35rem];
+    }
+
+    .numberpad-key {
+      @apply h-[3.15rem];
+    }
+
+    .payment-submit {
+      @apply py-3;
+    }
+  }
+
   .hero-card {
     @apply relative overflow-hidden rounded-[2rem] bg-ink p-5 text-white shadow-card;
   }
