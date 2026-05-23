@@ -37,13 +37,18 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  options: { auth?: boolean } = {},
+): Promise<T> {
   const token = getToken();
+  const useAuth = options.auth !== false;
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(useAuth && token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.headers ?? {}),
     },
   });
@@ -68,6 +73,17 @@ function mapTx(tx: any): StoredTransaction {
     createdAt: tx.createdAt,
     expiredAt: tx.expiredAt,
     completedAt: tx.completedAt,
+  };
+}
+
+export type PublicTransaction = StoredTransaction & {
+  merchantName: string;
+};
+
+function mapPublicTx(tx: any): PublicTransaction {
+  return {
+    ...mapTx(tx),
+    merchantName: tx.merchantName ?? "Merchant",
   };
 }
 
@@ -172,6 +188,24 @@ export const api = {
   async getTransaction(orderId: string) {
     const res = await request<{ transaction: any }>(`/transactions/${orderId}`);
     return mapTx(res.transaction);
+  },
+
+  async getPublicTransaction(orderId: string) {
+    const res = await request<{ transaction: any }>(
+      `/public/transactions/${orderId}`,
+      {},
+      { auth: false },
+    );
+    return mapPublicTx(res.transaction);
+  },
+
+  async checkPublicTransaction(orderId: string) {
+    const res = await request<{ transaction: any }>(
+      `/public/transactions/${orderId}/check`,
+      { method: "POST" },
+      { auth: false },
+    );
+    return mapPublicTx(res.transaction);
   },
 
   async checkTransaction(orderId: string) {

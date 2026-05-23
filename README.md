@@ -7,6 +7,7 @@ Pasound adalah web app mobile-first untuk membuat pembayaran QRIS lewat Pakasir,
 - Login/register dengan JWT
 - Generate pembayaran QRIS lewat Pakasir API
 - Halaman QR fullscreen untuk proses pembayaran
+- Halaman public pembayaran di `/p/:orderId` untuk customer tanpa login
 - Validasi status pembayaran lewat backend
 - Realtime sync multi-device via Server-Sent Events (SSE)
 - Text-to-speech otomatis saat pembayaran diterima
@@ -194,6 +195,11 @@ Transactions:
 - `POST /api/transactions/:orderId/cancel`
 - `POST /api/transactions/:orderId/simulate`
 
+Public payment:
+
+- `GET /api/public/transactions/:orderId`
+- `POST /api/public/transactions/:orderId/check`
+
 Realtime:
 
 - `GET /api/realtime?token=JWT`
@@ -214,6 +220,27 @@ Event yang dikirim backend:
 - `settings:updated`
 
 Ketika event diterima, frontend refresh dashboard/laporan/settings sesuai kebutuhan.
+
+## Public Payment Page
+
+Customer dapat membuka halaman pembayaran tanpa login:
+
+```txt
+/p/:orderId
+```
+
+Halaman public hanya menampilkan:
+
+- logo QRIS
+- nama merchant
+- QR code
+- nominal pembayaran
+- countdown kedaluwarsa
+- status pembayaran
+- tombol Salin Link
+- tombol Share WhatsApp
+
+Halaman public tidak memiliki tombol cancel, simulasi pembayaran, atau copy QRIS string.
 
 Catatan: SSE saat ini memory-based. Kalau backend di-scale ke beberapa instance, tambahkan Redis Pub/Sub agar event antar instance tetap sinkron.
 

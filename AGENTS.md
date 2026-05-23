@@ -133,6 +133,10 @@ Backend API routes:
 - `POST /api/transactions/:orderId/check`
 - `POST /api/transactions/:orderId/cancel`
 - `POST /api/transactions/:orderId/simulate`
+- `GET /api/public/transactions/:orderId`
+- `POST /api/public/transactions/:orderId/check`
+- `GET /api/realtime?token=JWT`
+- `GET /api/tts/payment-received?amount={amount}`
 
 ## Frontend Structure
 
@@ -167,6 +171,12 @@ Protected pages:
 - `/laporan`
 - `/pengaturan`
 
+Public pages:
+
+- `/login`
+- `/register`
+- `/p/:orderId` public customer QRIS payment page
+
 ## Data Flow
 
 Create payment flow:
@@ -189,6 +199,16 @@ Payment status flow:
   → backend calls Pakasir transactiondetail
   → backend updates MySQL
   → frontend shows success modal when completed
+```
+
+Public payment flow:
+
+```txt
+/p/:orderId
+  → GET /api/public/transactions/:orderId
+  → displays QR code, amount, countdown, status
+  → polls POST /api/public/transactions/:orderId/check while pending
+  → no cancel/simulate/copy QRIS string actions
 ```
 
 Settings flow:

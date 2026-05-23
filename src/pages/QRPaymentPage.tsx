@@ -109,6 +109,7 @@ export default function QRPaymentPage() {
   }
 
   const status: TransactionStatus = tx.status;
+  const publicUrl = `${window.location.origin}/p/${tx.orderId}`;
 
   const handleCopy = async (text: string, label = "QRIS") => {
     try {
@@ -117,6 +118,15 @@ export default function QRPaymentPage() {
     } catch {
       showToast("Gagal menyalin", "error");
     }
+  };
+
+  const handleShareWhatsapp = () => {
+    const text = `Silakan scan QRIS untuk pembayaran ${formatRupiah(tx.totalPayment)}:\n${publicUrl}`;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   const handleCancel = async () => {
@@ -250,29 +260,29 @@ export default function QRPaymentPage() {
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          onClick={() => handleCopy(tx.orderId, "Order ID")}
+          onClick={() => handleCopy(publicUrl, "Link pembayaran")}
           className="flex items-center gap-2 rounded-[1.35rem] border border-white/70 bg-white/80 px-3 py-3 text-left text-xs shadow-soft backdrop-blur active:scale-[0.98]"
         >
-          <Icon name="hash" size={16} className="text-ink-muted" />
+          <Icon name="link" size={16} className="text-ink-muted" />
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-wide text-ink-muted">
-              Order ID
+              Link Publik
             </p>
-            <p className="truncate font-semibold">{tx.orderId}</p>
+            <p className="truncate font-semibold">Salin URL</p>
           </div>
           <Icon name="copy" size={14} className="text-ink-muted" />
         </button>
         <button
           type="button"
-          onClick={() => handleCopy(tx.paymentNumber, "QRIS string")}
+          onClick={handleShareWhatsapp}
           className="flex items-center gap-2 rounded-[1.35rem] border border-white/70 bg-white/80 px-3 py-3 text-left text-xs shadow-soft backdrop-blur active:scale-[0.98]"
         >
-          <Icon name="qr-code" size={16} className="text-ink-muted" />
+          <Icon name="send" size={16} className="text-ink-muted" />
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-wide text-ink-muted">
-              QRIS String
+              WhatsApp
             </p>
-            <p className="truncate font-semibold">Salin payload</p>
+            <p className="truncate font-semibold">Bagikan link</p>
           </div>
           <Icon name="copy" size={14} className="text-ink-muted" />
         </button>

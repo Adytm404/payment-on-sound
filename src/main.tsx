@@ -15,6 +15,7 @@ import ReportPage from "./pages/ReportPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AuthPage from "./pages/AuthPage";
+import PublicPaymentPage from "./pages/PublicPaymentPage";
 
 import "./index.css";
 
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="p/:orderId" element={<PublicPaymentPage />} />
           <Route element={<PublicOnlyRoute />}>
             <Route path="login" element={<AuthPage mode="login" />} />
             <Route path="register" element={<AuthPage mode="register" />} />
