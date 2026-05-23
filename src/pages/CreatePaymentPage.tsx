@@ -146,7 +146,7 @@ export default function CreatePaymentPage() {
       </section>
 
       {/* NumberPad */}
-      <section>
+      <section className="payment-numberpad-section">
         <NumberPad onPress={handleKey} />
       </section>
 

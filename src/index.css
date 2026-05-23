@@ -128,28 +128,30 @@
 
 .payment-screen {
   display: flex;
+  height: 100dvh;
   min-height: 100dvh;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem 1.25rem 1.5rem;
+  gap: clamp(0.55rem, 1.7vh, 1.1rem);
+  overflow: hidden;
+  padding: clamp(0.75rem, 2vh, 1.35rem) 1.25rem clamp(0.75rem, 1.8vh, 1.25rem);
 }
 
 .payment-amount-block {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding-block: 0.75rem;
+  gap: clamp(0.4rem, 1.2vh, 0.85rem);
+  padding-block: clamp(0rem, 0.8vh, 0.55rem);
   text-align: center;
 }
 
 .payment-qris-logo {
-  height: 3rem;
+  height: clamp(2.15rem, 5.8vh, 3rem);
   width: auto;
 }
 
 .payment-amount-text {
-  font-size: 3rem;
+  font-size: clamp(2.2rem, 7.2vh, 3rem);
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -159,12 +161,17 @@
 .numberpad-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.45rem, 1.25vh, 0.75rem);
+  width: 100%;
+  height: 100%;
+  max-height: 17rem;
 }
 
 .numberpad-key {
   display: flex;
-  height: 4rem;
+  min-height: 0;
+  height: auto;
   align-items: center;
   justify-content: center;
   border-radius: 1.35rem;
@@ -178,6 +185,23 @@
   transition: transform 150ms ease, background-color 150ms ease;
 }
 
+.payment-numberpad-section {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: center;
+}
+
+.payment-screen .input {
+  padding-top: clamp(0.65rem, 1.5vh, 0.875rem);
+  padding-bottom: clamp(0.65rem, 1.5vh, 0.875rem);
+}
+
+.payment-submit {
+  padding-top: clamp(0.7rem, 1.8vh, 1rem) !important;
+  padding-bottom: clamp(0.7rem, 1.8vh, 1rem) !important;
+}
+
 .numberpad-key:hover {
   background: #fff;
 }
@@ -189,9 +213,7 @@
 
 @media (max-height: 760px) {
   .payment-screen {
-    gap: 1rem;
-    padding-top: 1.25rem;
-    padding-bottom: 1rem;
+    gap: 0.75rem;
   }
 
   .payment-amount-block {
@@ -212,7 +234,6 @@
   }
 
   .numberpad-key {
-    height: 3.5rem;
     border-radius: 1.25rem;
   }
 
@@ -229,9 +250,7 @@
 
 @media (max-height: 680px) {
   .payment-screen {
-    gap: 0.75rem;
-    padding-top: 1rem;
-    padding-bottom: 0.75rem;
+    gap: 0.55rem;
   }
 
   .payment-amount-block {
@@ -245,10 +264,6 @@
 
   .payment-amount-text {
     font-size: 2.35rem;
-  }
-
-  .numberpad-key {
-    height: 3.15rem;
   }
 
   .payment-submit {
