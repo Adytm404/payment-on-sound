@@ -25,7 +25,7 @@ export default function SettingsPage() {
   const [ttsVolume, setTtsVolume] = useState(config.ttsVolume);
   const [showApiKey, setShowApiKey] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<null | "transactions" | "all">(
+  const [confirmAction, setConfirmAction] = useState<null | "transactions" | "all" | "logout">(
     null,
   );
   const { voices, supported: speechSupported } = useSpeechVoices();
@@ -103,6 +103,11 @@ export default function SettingsPage() {
   const handleResetAll = () => {
     setConfirmAction(null);
     storage.clearAll();
+    logout();
+  };
+
+  const handleLogout = () => {
+    setConfirmAction(null);
     logout();
   };
 
@@ -353,6 +358,31 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      <section className="card p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-alt text-ink-muted">
+            <Icon name="user" size={16} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold">Akun</h2>
+            <p className="text-[11px] text-ink-muted">
+              Keluar dari akun di perangkat ini
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setConfirmAction("logout")}
+          className="flex w-full items-center justify-between rounded-2xl bg-surface-alt px-4 py-3 text-sm font-semibold text-ink active:scale-[0.98]"
+        >
+          <span className="flex items-center gap-2">
+            <Icon name="log-out" size={16} />
+            Logout
+          </span>
+          <Icon name="chevron-right" size={16} className="text-ink-soft" />
+        </button>
+      </section>
+
       {/* Danger zone */}
       <section className="card p-5">
         <button
@@ -424,6 +454,15 @@ export default function SettingsPage() {
         confirmLabel="Reset semua"
         tone="danger"
         onConfirm={handleResetAll}
+        onCancel={() => setConfirmAction(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmAction === "logout"}
+        title="Logout dari akun?"
+        description="Anda akan keluar dari akun di perangkat ini. Data tetap aman di database."
+        confirmLabel="Logout"
+        onConfirm={handleLogout}
         onCancel={() => setConfirmAction(null)}
       />
 
