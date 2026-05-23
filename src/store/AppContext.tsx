@@ -4,14 +4,12 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { api } from "@/lib/api";
 import type { DashboardSummary } from "@/lib/api";
 import type { AppConfig, StoredTransaction } from "@/lib/storage";
-import { speakPaymentReceived } from "@/lib/tts";
 import { useAuth } from "./AuthContext";
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -55,7 +53,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<StoredTransaction[]>([]);
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary>(DEFAULT_DASHBOARD_SUMMARY);
   const [loading, setLoading] = useState(false);
-  const previousStatusesRef = useRef<Map<string, StoredTransaction["status"]>>(new Map());
 
   const refreshSettings = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -80,17 +77,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     Promise.all([refreshSettings(), refresh()]).finally(() => setLoading(false));
   }, [isAuthenticated, refreshSettings, refresh]);
-
-  useEffect(() => {
-    const previous = previousStatusesRef.current;
-    transactions.forEach((tx) => {
-      const before = previous.get(tx.orderId);
-      if (before && before !== "completed" && tx.status === "completed") {
-        speakPaymentReceived(tx.amount, config);
-      }
-      previous.set(tx.orderId, tx.status);
-    });
-  }, [transactions, config]);
 
   const saveConfig = useCallback(async (next: AppConfig) => {
     const saved = await api.saveSettings(next);

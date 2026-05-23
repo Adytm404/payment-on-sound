@@ -6,6 +6,7 @@ import { settingsRouter } from "./routes/settings";
 import { transactionsRouter } from "./routes/transactions";
 import { dashboardRouter } from "./routes/dashboard";
 import { realtimeRouter } from "./routes/realtime";
+import { ttsRouter } from "./routes/tts";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
@@ -22,6 +23,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/transactions", transactionsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/realtime", realtimeRouter);
+app.use("/api/tts", ttsRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

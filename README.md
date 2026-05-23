@@ -24,12 +24,14 @@ Pasound adalah web app mobile-first untuk membuat pembayaran QRIS lewat Pakasir,
 - Database: MySQL + Prisma
 - Auth: JWT + bcrypt
 - Realtime: Server-Sent Events (SSE)
+- TTS fallback: Microsoft Edge TTS CLI via Python package `edge-tts`
 - Payment provider: Pakasir
 
 ## Requirement
 
 - Node.js 20+
 - MySQL berjalan di localhost
+- Python launcher `py` (Windows) untuk backend TTS fallback
 - Database bernama `pasound`
 - User MySQL: `root`
 - Password MySQL: kosong
@@ -44,6 +46,9 @@ JWT_SECRET="replace-this-with-a-long-random-secret"
 PORT=3001
 FRONTEND_ORIGIN="http://localhost:3000"
 VITE_API_BASE_URL="/api"
+PYTHON_BIN="py"
+EDGE_TTS_VOICE="id-ID-GadisNeural"
+TTS_CACHE_DIR="storage/tts"
 ```
 
 Ganti `JWT_SECRET` sebelum dipakai production.
@@ -52,6 +57,12 @@ Ganti `JWT_SECRET` sebelum dipakai production.
 
 ```bash
 npm install
+```
+
+Install Python Edge TTS fallback:
+
+```bash
+py -m pip install edge-tts
 ```
 
 Generate Prisma client:
@@ -187,6 +198,10 @@ Realtime:
 
 - `GET /api/realtime?token=JWT`
 
+TTS:
+
+- `GET /api/tts/payment-received?amount=5000`
+
 ## Realtime Sync
 
 Realtime memakai Server-Sent Events (SSE).
@@ -238,6 +253,30 @@ public/qris-logo.svg
 ```
 
 Jangan pakai URL Wikimedia langsung di component.
+
+## Text To Speech
+
+Frontend mencoba Web Speech API terlebih dahulu saat pembayaran completed di `/transaksi/:orderId`.
+
+Jika browser tidak support Web Speech API, frontend fallback ke backend:
+
+```txt
+GET /api/tts/payment-received?amount={amount}
+```
+
+Backend memakai `py -m edge_tts` untuk generate MP3 dan cache hasilnya di:
+
+```txt
+storage/tts/
+```
+
+Default voice:
+
+```txt
+id-ID-GadisNeural
+```
+
+Ubah lewat env `EDGE_TTS_VOICE` jika perlu.
 
 ## Catatan Keamanan
 

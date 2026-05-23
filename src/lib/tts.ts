@@ -1,4 +1,5 @@
 import type { AppConfig } from "./storage";
+import { getApiBase, getToken } from "./api";
 
 export function isSpeechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -50,4 +51,23 @@ export function speakPaymentReceived(amount: number, config: AppConfig): boolean
     `Pembayaran ${formatSpokenRupiah(amount)} rupiah, diterima`,
     config,
   );
+}
+
+export async function playBackendPaymentReceived(amount: number) {
+  const token = getToken();
+  if (!token) return false;
+
+  const res = await fetch(
+    `${getApiBase()}/tts/payment-received?amount=${encodeURIComponent(amount)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) return false;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  audio.onended = () => URL.revokeObjectURL(url);
+  audio.onerror = () => URL.revokeObjectURL(url);
+  await audio.play();
+  return true;
 }

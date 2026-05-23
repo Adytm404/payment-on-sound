@@ -65,6 +65,9 @@ JWT_SECRET="replace-this-with-a-long-random-secret"
 PORT=3001
 FRONTEND_ORIGIN="http://localhost:3000"
 VITE_API_BASE_URL="/api"
+PYTHON_BIN="py"
+EDGE_TTS_VOICE="id-ID-GadisNeural"
+TTS_CACHE_DIR="storage/tts"
 ```
 
 MySQL is expected at:
@@ -226,6 +229,13 @@ Current UI direction:
 ## Text-To-Speech
 
 TTS uses Web Speech API in `src/lib/tts.ts`.
+
+If Web Speech API is unavailable, frontend falls back to backend Edge TTS:
+
+- `GET /api/tts/payment-received?amount={amount}`
+- Backend uses `py -m edge_tts`
+- Generated MP3 files are cached under `storage/tts/`
+- `storage/` is gitignored
 
 Behavior:
 

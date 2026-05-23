@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Icon } from "@/components/Icon";
@@ -17,6 +17,7 @@ import {
 import { STATUS_COLOR, STATUS_LABEL, classNames } from "@/lib/status";
 import { api } from "@/lib/api";
 import type { StoredTransaction } from "@/lib/storage";
+import { playBackendPaymentReceived, speakPaymentReceived } from "@/lib/tts";
 
 export default function QRPaymentPage() {
   const { orderId = "" } = useParams<{ orderId: string }>();
@@ -28,6 +29,7 @@ export default function QRPaymentPage() {
     [transactions, orderId],
   );
   const [tx, setTx] = useState<StoredTransaction | undefined>(contextTx);
+  const announcedRef = useRef(false);
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [actionLoading, setActionLoading] = useState<null | "cancel" | "sim">(
@@ -62,6 +64,11 @@ export default function QRPaymentPage() {
         setTx(next);
         setTransaction(next);
         if (next.status === "completed") {
+          if (!announcedRef.current) {
+            announcedRef.current = true;
+            const spoken = speakPaymentReceived(next.amount, config);
+            if (!spoken) void playBackendPaymentReceived(next.amount);
+          }
           setShowSuccess(true);
           return;
         }
