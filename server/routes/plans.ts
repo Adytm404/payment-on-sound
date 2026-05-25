@@ -116,16 +116,22 @@ router.post("/upgrade", requireActiveUser, async (req, res) => {
   }
   const appUrl = process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
   const apiUrl = process.env.PUBLIC_API_BASE_URL ?? appUrl;
-  const invoice = await createDuitkuInvoice({
-    config: { merchantCode: settings.duitkuMerchantCode, apiKey: settings.duitkuApiKey, sandbox: settings.duitkuSandbox },
-    amount: finalAmount,
-    orderId,
-    productDetails: `Upgrade Pasound Pro ${plan.billingPeriodDays ?? 30} Hari`,
-    customerName: user.name,
-    email: user.email,
-    callbackUrl: `${apiUrl}/api/duitku/plan-callback`,
-    returnUrl: `${appUrl}/pengaturan?upgrade=return`,
-  });
+  let invoice;
+  try {
+    invoice = await createDuitkuInvoice({
+      config: { merchantCode: settings.duitkuMerchantCode, apiKey: settings.duitkuApiKey, sandbox: settings.duitkuSandbox },
+      amount: finalAmount,
+      orderId,
+      productDetails: `Upgrade Pasound Pro ${plan.billingPeriodDays ?? 30} Hari`,
+      customerName: user.name,
+      email: user.email,
+      callbackUrl: `${apiUrl}/api/duitku/plan-callback`,
+      returnUrl: `${appUrl}/pengaturan?upgrade=return`,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err instanceof Error ? err.message : "Gagal membuat invoice Duitku" });
+    return;
+  }
   const order = await prisma.planOrder.create({
     data: { userId, planId: plan.id, promoCodeId: promo?.id, orderId, provider: "duitku_pop", providerReference: invoice.reference, amount: plan.price, discountAmount, finalAmount, status: "pending", paymentUrl: invoice.paymentUrl, expiresAt },
   });

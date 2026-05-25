@@ -56,9 +56,16 @@ export async function createDuitkuInvoice(input: CreateInvoiceInput) {
       expiryPeriod: input.expiryPeriod ?? 60,
     }),
   });
-  const data = await res.json().catch(() => null);
+  const raw = await res.text();
+  const data = raw ? (() => {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  })() : null;
   if (!res.ok || data?.statusCode !== "00") {
-    throw new Error(data?.statusMessage || data?.Message || `Duitku gagal (${res.status})`);
+    throw new Error(data?.statusMessage || data?.Message || data?.message || raw || `Duitku gagal (${res.status})`);
   }
   return data as { merchantCode: string; reference: string; paymentUrl: string; statusCode: string; statusMessage: string };
 }
