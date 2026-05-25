@@ -280,7 +280,7 @@ export default function ReportPage() {
               </p>
               <div className="flex flex-col gap-2">
                 {items.map((tx) => (
-                  <TransactionItem key={tx.orderId} tx={tx} compact />
+                  <TransactionItem key={tx.orderId} tx={tx} compact showFee />
                 ))}
               </div>
             </div>

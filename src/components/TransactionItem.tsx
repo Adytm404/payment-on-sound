@@ -13,9 +13,10 @@ type Props = {
   tx: StoredTransaction;
   to?: string;
   compact?: boolean;
+  showFee?: boolean;
 };
 
-export function TransactionItem({ tx, to, compact = false }: Props) {
+export function TransactionItem({ tx, to, compact = false, showFee = false }: Props) {
   const target = to ?? `/transaksi/${tx.orderId}`;
   const isIncome = tx.status === "completed";
 
@@ -51,6 +52,11 @@ export function TransactionItem({ tx, to, compact = false }: Props) {
         {!compact ? (
           <p className="truncate text-xs text-ink-muted">
             {formatRelative(tx.createdAt)} • {tx.orderId}
+          </p>
+        ) : null}
+        {showFee ? (
+          <p className="mt-0.5 truncate text-[11px] font-semibold text-rose-500">
+            Biaya admin {formatRupiah(tx.fee)}
           </p>
         ) : null}
       </div>
