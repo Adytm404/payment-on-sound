@@ -17,9 +17,8 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isRegister) await register({ name, email, password });
-      else await login({ email, password });
-      navigate("/", { replace: true });
+      const user = isRegister ? await register({ name, email, password }) : await login({ email, password });
+      navigate(user.role === "admin" ? "/admin" : "/", { replace: true });
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Gagal autentikasi", "error");
     } finally {

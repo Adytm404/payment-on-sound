@@ -5,7 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./App";
 import { AppProvider } from "./store/AppContext";
 import { AuthProvider } from "./store/AuthContext";
-import { ProtectedRoute, PublicOnlyRoute } from "./components/ProtectedRoute";
+import { AdminRoute, MerchantRoute, PublicOnlyRoute } from "./components/ProtectedRoute";
 import { ToastHost } from "./components/Toast";
 
 import DashboardPage from "./pages/DashboardPage";
@@ -16,6 +16,15 @@ import SettingsPage from "./pages/SettingsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AuthPage from "./pages/AuthPage";
 import PublicPaymentPage from "./pages/PublicPaymentPage";
+import AdminApp from "./pages/admin/AdminApp";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminUserDetailPage from "./pages/admin/AdminUserDetailPage";
+import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
+import AdminReportsPage from "./pages/admin/AdminReportsPage";
+import AdminPlansPage from "./pages/admin/AdminPlansPage";
+import AdminPromosPage from "./pages/admin/AdminPromosPage";
+import AdminPlatformSettingsPage from "./pages/admin/AdminPlatformSettingsPage";
 
 import "./index.css";
 
@@ -29,7 +38,19 @@ createRoot(document.getElementById("root")!).render(
             <Route path="login" element={<AuthPage mode="login" />} />
             <Route path="register" element={<AuthPage mode="register" />} />
           </Route>
-          <Route element={<ProtectedRoute />}>
+          <Route element={<AdminRoute />}>
+            <Route path="admin" element={<AdminApp />}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="plans" element={<AdminPlansPage />} />
+              <Route path="promos" element={<AdminPromosPage />} />
+              <Route path="settings" element={<AdminPlatformSettingsPage />} />
+              <Route path="users/:userId" element={<AdminUserDetailPage />} />
+              <Route path="transactions" element={<AdminTransactionsPage />} />
+              <Route path="reports" element={<AdminReportsPage />} />
+            </Route>
+          </Route>
+          <Route element={<MerchantRoute />}>
             <Route
               element={
                 <AppProvider>

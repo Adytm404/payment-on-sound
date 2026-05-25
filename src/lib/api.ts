@@ -4,7 +4,32 @@ import type { TransactionStatus } from "./pakasir";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 const TOKEN_KEY = "pasound:token";
 
-export type User = { id: string; name: string; email: string };
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "merchant";
+  isActive: boolean;
+  adminNote: string;
+};
+export type Plan = {
+  id: string;
+  name: string;
+  slug: "free" | "pro" | string;
+  description: string;
+  price: number;
+  billingPeriodDays: number | null;
+  monthlyTransactionLimit: number | null;
+  maxTransactionAmount: number | null;
+  reportRetentionDays: number | null;
+  canUseRealtime: boolean;
+  canExportReports: boolean;
+  canUseTts: boolean;
+  canUsePublicPaymentPage: boolean;
+  canSeeAdminFee: boolean;
+  isActive: boolean;
+  sortOrder: number;
+};
 export type Pagination = { page: number; limit: number; total: number; totalPages: number };
 export type TransactionSummary = {
   income: number;
@@ -231,5 +256,34 @@ export const api = {
 
   clearTransactions() {
     return request<{ ok: boolean }>("/transactions", { method: "DELETE" });
+  },
+
+  listPlans() {
+    return request<{ plans: Plan[] }>("/plans");
+  },
+
+  currentPlan() {
+    return request<{ plan: Plan | null }>("/plans/current");
+  },
+
+  choosePlan(slug: string) {
+    return request<{ plan: Plan }>("/plans/current", {
+      method: "PUT",
+      body: JSON.stringify({ slug }),
+    });
+  },
+
+  previewUpgrade(promoCode: string) {
+    return request<{ plan: Plan; promo: any | null; amount: number; discountAmount: number; finalAmount: number }>("/plans/preview-upgrade", {
+      method: "POST",
+      body: JSON.stringify({ promoCode }),
+    });
+  },
+
+  upgradePlan(promoCode: string) {
+    return request<{ order: any; paymentUrl: string | null; activated: boolean }>("/plans/upgrade", {
+      method: "POST",
+      body: JSON.stringify({ promoCode }),
+    });
   },
 };

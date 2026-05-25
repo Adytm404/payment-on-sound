@@ -3,10 +3,12 @@ import { z } from "zod";
 import { Prisma, type TransactionStatus } from "@prisma/client";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
+import { requireActiveUser } from "../middleware/admin";
 import { generateOrderId } from "../utils/orderId";
 import { cancelTransaction, createQris, simulatePayment, transactionDetail } from "../utils/pakasir";
 import { toJson } from "../utils/json";
 import { broadcastToUser } from "../realtime";
+import { getUserPlan, monthStart, retentionStart } from "../utils/plans";
 
 const router = Router();
 router.use(requireAuth);
@@ -57,9 +59,15 @@ router.get("/", async (req, res) => {
   const status = String(req.query.status ?? "all");
   const search = String(req.query.search ?? "").trim();
   const start = dateStart(String(req.query.period ?? "all"));
+  const plan = await getUserPlan(userId);
+  const retention = retentionStart(plan?.reportRetentionDays);
 
   const where: Prisma.TransactionWhereInput = { userId };
   if (start) where.createdAt = { gte: start };
+  if (retention) {
+    const current = where.createdAt && "gte" in where.createdAt ? where.createdAt.gte : null;
+    where.createdAt = { gte: current && current > retention ? current : retention };
+  }
   if (status !== "all" && statusValues.includes(status as TransactionStatus)) {
     where.status = status as TransactionStatus;
   }
@@ -111,14 +119,14 @@ router.get("/", async (req, res) => {
   });
 });
 
-router.delete("/", async (req, res) => {
+router.delete("/", requireActiveUser, async (req, res) => {
   const userId = BigInt(req.auth!.userId);
   await prisma.transaction.deleteMany({ where: { userId } });
   broadcastToUser(userId, "transactions:cleared", { type: "transactions:cleared" });
   res.json({ ok: true });
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireActiveUser, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(422).json({ message: "Data transaksi tidak valid" });
@@ -127,6 +135,18 @@ router.post("/", async (req, res) => {
 
   const userId = BigInt(req.auth!.userId);
   try {
+    const plan = await getUserPlan(userId);
+    if (plan?.maxTransactionAmount && parsed.data.amount > plan.maxTransactionAmount) {
+      res.status(403).json({ message: `Nominal ini melebihi batas plan ${plan.name}. Upgrade ke Pro untuk menerima pembayaran bernilai lebih besar.` });
+      return;
+    }
+    if (plan?.monthlyTransactionLimit) {
+      const used = await prisma.transaction.count({ where: { userId, createdAt: { gte: monthStart() } } });
+      if (used >= plan.monthlyTransactionLimit) {
+        res.status(403).json({ message: `Kuota transaksi ${plan.name} bulan ini sudah penuh. Upgrade ke Pro untuk menerima transaksi tanpa batas.` });
+        return;
+      }
+    }
     const settings = await getSettings(userId);
     const orderId = generateOrderId();
     const payment = await createQris({ config: settings, orderId, amount: parsed.data.amount });
@@ -197,7 +217,7 @@ router.post("/:orderId/check", async (req, res) => {
   }
 });
 
-router.post("/:orderId/cancel", async (req, res) => {
+router.post("/:orderId/cancel", requireActiveUser, async (req, res) => {
   const userId = BigInt(req.auth!.userId);
   const tx = await prisma.transaction.findFirst({ where: { userId, orderId: req.params.orderId } });
   if (!tx) {
@@ -219,7 +239,7 @@ router.post("/:orderId/cancel", async (req, res) => {
   res.json({ transaction: shape(updated) });
 });
 
-router.post("/:orderId/simulate", async (req, res) => {
+router.post("/:orderId/simulate", requireActiveUser, async (req, res) => {
   const userId = BigInt(req.auth!.userId);
   const tx = await prisma.transaction.findFirst({ where: { userId, orderId: req.params.orderId } });
   if (!tx) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Icon } from "@/components/Icon";
@@ -8,8 +8,13 @@ import { storage } from "@/lib/storage";
 import { useSpeechVoices } from "@/hooks/useSpeechVoices";
 import { speakText } from "@/lib/tts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { api } from "@/lib/api";
+import { api, type Plan } from "@/lib/api";
 import { useAuth } from "@/store/AuthContext";
+import { formatRupiah } from "@/lib/format";
+
+function formatPlanNumber(value: number) {
+  return formatRupiah(value);
+}
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -30,11 +35,24 @@ export default function SettingsPage() {
   const [confirmAction, setConfirmAction] = useState<null | "transactions" | "all" | "logout">(
     null,
   );
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [upgradePreview, setUpgradePreview] = useState<null | { amount: number; discountAmount: number; finalAmount: number; promo: any | null }>(null);
   const { voices, supported: speechSupported } = useSpeechVoices();
   const indonesianVoices = voices.filter((voice) =>
     voice.lang.toLowerCase().startsWith("id"),
   );
   const displayedVoices = indonesianVoices.length > 0 ? indonesianVoices : voices;
+
+  useEffect(() => {
+    Promise.all([api.listPlans(), api.currentPlan()])
+      .then(([plansRes, planRes]) => {
+        setPlans(plansRes.plans);
+        setCurrentPlan(planRes.plan);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const dirty =
     project !== config.project ||
@@ -115,9 +133,94 @@ export default function SettingsPage() {
     navigate("/login", { replace: true });
   };
 
+  const handleChoosePlan = async (slug: string) => {
+    if (slug === "pro") {
+      const res = await api.upgradePlan(promoCode);
+      if (res.activated) {
+        const current = await api.currentPlan();
+        setCurrentPlan(current.plan);
+        showToast("Pro aktif", "success");
+        return;
+      }
+      if (res.paymentUrl) window.location.href = `${res.paymentUrl}${res.paymentUrl.includes("?") ? "&" : "?"}lang=id`;
+      return;
+    }
+    const res = await api.choosePlan(slug);
+    setCurrentPlan(res.plan);
+    showToast(`Plan ${res.plan.name} aktif`, "success");
+  };
+
+  const handlePreviewUpgrade = async () => {
+    const res = await api.previewUpgrade(promoCode);
+    setUpgradePreview({ amount: res.amount, discountAmount: res.discountAmount, finalAmount: res.finalAmount, promo: res.promo });
+    showToast(res.promo ? `Promo ${res.promo.code} aktif` : "Promo tidak digunakan", "info");
+  };
+
   return (
     <div className="screen gap-5">
       <Header title="Pengaturan" subtitle="Konfigurasi Pakasir & data lokal" />
+
+      <section className="card p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-50 text-primary">
+            <Icon name="badge-dollar-sign" size={16} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold">Plan Merchant</h2>
+            <p className="text-[11px] text-ink-muted">Pilih paket fitur yang cocok untuk operasional toko</p>
+          </div>
+        </div>
+        <div className="grid gap-3">
+          {plans.map((plan) => {
+            const active = currentPlan?.slug === plan.slug;
+            return (
+              <button
+                key={plan.slug}
+                type="button"
+                onClick={() => handleChoosePlan(plan.slug)}
+                className={`rounded-[1.5rem] border p-4 text-left transition ${
+                  active ? "border-primary bg-primary-50" : "border-white/70 bg-surface-alt hover:bg-white"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-extrabold text-ink">{plan.name}</p>
+                    <p className="mt-1 text-xs text-ink-muted">{plan.description}</p>
+                  </div>
+                  {active ? <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold text-white">Aktif</span> : null}
+                </div>
+                <p className="mt-3 text-sm font-extrabold text-ink">
+                  {plan.price > 0 ? `${formatRupiah(plan.price)} / ${plan.billingPeriodDays ?? 30} hari` : "Gratis"}
+                </p>
+                <div className="mt-3 grid gap-1 text-xs font-semibold text-ink-muted">
+                  <span>{plan.monthlyTransactionLimit ? `${plan.monthlyTransactionLimit} transaksi per bulan` : "Transaksi tanpa batas"}</span>
+                  <span>{plan.maxTransactionAmount ? `Maksimal transaksi ${formatPlanNumber(plan.maxTransactionAmount)}` : "Nominal transaksi tanpa batas"}</span>
+                  <span>{plan.reportRetentionDays ? `Riwayat laporan ${plan.reportRetentionDays} hari` : "Riwayat laporan lengkap"}</span>
+                  {plan.canUseRealtime ? <span>Sinkronisasi multi-perangkat</span> : null}
+                  {plan.canExportReports ? <span>Export laporan profesional</span> : null}
+                </div>
+                {!active && plan.slug === "pro" ? <span className="mt-3 inline-flex rounded-2xl bg-[#D71920] px-4 py-2 text-xs font-extrabold text-white">Upgrade ke Pro</span> : null}
+              </button>
+            );
+          })}
+        </div>
+        {currentPlan?.slug !== "pro" ? (
+          <div className="mt-4 rounded-[1.5rem] bg-surface-alt p-4">
+            <label className="mb-2 block text-xs font-bold text-ink-muted">Promo code</label>
+            <div className="flex gap-2">
+              <input className="input py-3 uppercase" value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="TRIAL7" />
+              <button type="button" onClick={handlePreviewUpgrade} className="rounded-[1.25rem] bg-ink px-4 text-xs font-extrabold text-white">Cek</button>
+            </div>
+            {upgradePreview ? (
+              <div className="mt-3 text-xs font-semibold text-ink-muted">
+                <p>Harga: {formatRupiah(upgradePreview.amount)}</p>
+                <p>Diskon: {formatRupiah(upgradePreview.discountAmount)}</p>
+                <p className="text-ink">Total bayar: {formatRupiah(upgradePreview.finalAmount)}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       {/* Pakasir config */}
       <section className="card p-5">

@@ -18,8 +18,22 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-function publicUser(user: { id: bigint; name: string; email: string }) {
-  return { id: user.id.toString(), name: user.name, email: user.email };
+function publicUser(user: {
+  id: bigint;
+  name: string;
+  email: string;
+  role: "admin" | "merchant";
+  isActive: boolean;
+  adminNote: string | null;
+}) {
+  return {
+    id: user.id.toString(),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isActive: user.isActive,
+    adminNote: user.adminNote ?? "",
+  };
 }
 
 router.post("/register", async (req, res) => {
@@ -37,11 +51,13 @@ router.post("/register", async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const freePlan = await prisma.plan.findUnique({ where: { slug: "free" } });
   const user = await prisma.user.create({
     data: {
       name,
       email,
       passwordHash,
+      ...(freePlan ? { planId: freePlan.id } : {}),
       settings: {
         create: {
           merchantName: name,
@@ -51,7 +67,7 @@ router.post("/register", async (req, res) => {
       },
     },
   });
-  const token = signToken({ userId: user.id.toString(), email: user.email });
+  const token = signToken({ userId: user.id.toString(), email: user.email, role: user.role });
   res.status(201).json({ token, user: publicUser(user) });
 });
 
@@ -74,7 +90,7 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  const token = signToken({ userId: user.id.toString(), email: user.email });
+  const token = signToken({ userId: user.id.toString(), email: user.email, role: user.role });
   res.json({ token, user: publicUser(user) });
 });
 

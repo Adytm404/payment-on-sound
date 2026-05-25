@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
+import { requireActiveUser } from "../middleware/admin";
 import { broadcastToUser } from "../realtime";
 
 const router = Router();
@@ -46,7 +47,7 @@ router.get("/", async (req, res) => {
   res.json({ settings: shape(settings) });
 });
 
-router.put("/", async (req, res) => {
+router.put("/", requireActiveUser, async (req, res) => {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(422).json({ message: "Data pengaturan tidak valid" });
