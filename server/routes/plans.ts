@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireActiveUser } from "../middleware/admin";
 import { getUserPlan, publicPlan } from "../utils/plans";
 import { createDuitkuInvoice } from "../utils/duitkuPop";
+import { toJson } from "../utils/json";
 
 const router = Router();
 router.use(requireAuth);
@@ -106,7 +107,7 @@ router.post("/upgrade", requireActiveUser, async (req, res) => {
       await tx.user.update({ where: { id: userId }, data: { planId: plan.id, planExpiresAt: expiresAt } });
       return created;
     });
-    res.json({ order, paymentUrl: null, activated: true });
+    res.json({ order: toJson(order), paymentUrl: null, activated: true });
     return;
   }
 
@@ -135,7 +136,7 @@ router.post("/upgrade", requireActiveUser, async (req, res) => {
   const order = await prisma.planOrder.create({
     data: { userId, planId: plan.id, promoCodeId: promo?.id, orderId, provider: "duitku_pop", providerReference: invoice.reference, amount: plan.price, discountAmount, finalAmount, status: "pending", paymentUrl: invoice.paymentUrl, expiresAt },
   });
-  res.json({ order, paymentUrl: invoice.paymentUrl, activated: false });
+  res.json({ order: toJson(order), paymentUrl: invoice.paymentUrl, activated: false });
 });
 
 export { router as plansRouter };
