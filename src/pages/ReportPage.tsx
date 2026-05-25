@@ -38,7 +38,13 @@ export default function ReportPage() {
   const [page, setPage] = useState(1);
   const [transactions, setTransactions] = useState<StoredTransaction[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 });
-  const [summary, setSummary] = useState<TransactionSummary>({ income: 0, pending: 0, completedCount: 0, pendingCount: 0 });
+  const [summary, setSummary] = useState<TransactionSummary>({
+    income: 0,
+    pending: 0,
+    adminFee: 0,
+    completedCount: 0,
+    pendingCount: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [realtimeTick, setRealtimeTick] = useState(0);
 
@@ -184,6 +190,22 @@ export default function ReportPage() {
           <p className="mt-1 text-[11px] text-ink-soft">
             {summary.pendingCount} transaksi menunggu
           </p>
+        </div>
+        <div className="card col-span-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs text-ink-muted">Biaya Admin</p>
+              <p className="mt-1 text-xl font-bold tabular-nums text-rose-600">
+                {formatRupiah(summary.adminFee)}
+              </p>
+              <p className="mt-1 text-[11px] text-ink-soft">
+                Total fee dari transaksi berhasil
+              </p>
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <Icon name="receipt-text" size={18} />
+            </div>
+          </div>
         </div>
       </section>
 

@@ -9,6 +9,7 @@ export type Pagination = { page: number; limit: number; total: number; totalPage
 export type TransactionSummary = {
   income: number;
   pending: number;
+  adminFee: number;
   completedCount: number;
   pendingCount: number;
 };

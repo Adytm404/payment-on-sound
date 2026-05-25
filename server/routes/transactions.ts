@@ -75,7 +75,15 @@ router.get("/", async (req, res) => {
     ];
   }
 
-  const [total, data, aggregate, completedCount, pendingCount, pendingAggregate] = await Promise.all([
+  const [
+    total,
+    data,
+    aggregate,
+    completedCount,
+    pendingCount,
+    pendingAggregate,
+    adminFeeAggregate,
+  ] = await Promise.all([
     prisma.transaction.count({ where }),
     prisma.transaction.findMany({
       where,
@@ -87,6 +95,7 @@ router.get("/", async (req, res) => {
     prisma.transaction.count({ where: { ...where, status: "completed" } }),
     prisma.transaction.count({ where: { ...where, status: "pending" } }),
     prisma.transaction.aggregate({ where: { ...where, status: "pending" }, _sum: { amount: true } }),
+    prisma.transaction.aggregate({ where: { ...where, status: "completed" }, _sum: { fee: true } }),
   ]);
 
   res.json({
@@ -95,6 +104,7 @@ router.get("/", async (req, res) => {
     summary: {
       income: aggregate._sum.amount ?? 0,
       pending: pendingAggregate._sum.amount ?? 0,
+      adminFee: adminFeeAggregate._sum.fee ?? 0,
       completedCount,
       pendingCount,
     },
