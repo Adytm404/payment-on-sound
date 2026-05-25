@@ -64,6 +64,10 @@ export default function PlanManagementPage() {
   };
 
   const handleDowngrade = async () => {
+    if (isPro && left !== null && left > 0) {
+      showToast(`Plan akan berubah ke Free setelah ${formatDate(planExpiresAt)}`, "info");
+      return;
+    }
     setLoading(true);
     try {
       await api.choosePlan("free");
@@ -132,9 +136,10 @@ export default function PlanManagementPage() {
         </button>
         {isPro ? (
           <button type="button" disabled={loading} onClick={handleDowngrade} className="mt-3 w-full rounded-[1.4rem] bg-surface-alt px-5 py-4 text-sm font-extrabold text-ink disabled:opacity-50">
-            Turun ke Free
+            {left !== null && left > 0 ? "Jangan perpanjang, kembali Free saat expired" : "Turun ke Free"}
           </button>
         ) : null}
+        {isPro && left !== null && left > 0 ? <p className="mt-2 text-center text-xs font-semibold text-ink-muted">Kalau tidak diperpanjang, plan otomatis dianggap Free setelah {formatDate(planExpiresAt)}.</p> : null}
       </section>
     </div>
   );

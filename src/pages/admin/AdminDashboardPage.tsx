@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { adminApi, type AdminTransaction } from "@/lib/adminApi";
-import { formatRelative } from "@/lib/format";
-import { Money, StatCard, StatusBadge } from "./AdminShared";
+import { adminApi } from "@/lib/adminApi";
+import { Money, StatCard } from "./AdminShared";
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof adminApi.dashboard>> | null>(null);
@@ -23,36 +22,23 @@ export default function AdminDashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Merchant/User" value={data.summary.users} />
+        <StatCard label="User Pro Aktif" value={data.summary.proUsers} tone="green" />
         <StatCard label="Income Sukses" value={<Money value={data.summary.income} />} tone="green" />
         <StatCard label="Biaya Admin" value={<Money value={data.summary.fees} />} tone="red" />
-        <StatCard label="Pending" value={data.summary.pending} />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5">
-          <h3 className="mb-4 text-xl font-black">Transaksi Terbaru</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-widest text-slate-500"><tr><th className="py-3">Order</th><th>Merchant</th><th>Status</th><th>Nominal</th><th>Fee</th><th>Waktu</th></tr></thead>
-              <tbody className="divide-y divide-white/10">
-                {data.recentTransactions.map((tx: AdminTransaction) => <tr key={tx.orderId}><td className="py-3 font-mono text-xs text-slate-300">{tx.orderId}</td><td>{tx.user.name}<p className="text-xs text-slate-500">{tx.user.email}</p></td><td><StatusBadge status={tx.status} /></td><td><Money value={tx.amount} /></td><td className="text-red-300"><Money value={tx.fee} /></td><td className="text-slate-400">{formatRelative(tx.createdAt)}</td></tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Transaksi User" value={data.summary.transactions} />
+        <StatCard label="Transaksi Sukses" value={data.summary.completed} />
+        <StatCard label="Transaksi Pending" value={data.summary.pending} />
+        <StatCard label="Income Hari Ini" value={<Money value={data.summary.todayIncome} />} />
+      </section>
 
-        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5">
-          <h3 className="mb-4 text-xl font-black">Top Merchant</h3>
-          <div className="space-y-3">
-            {data.topMerchants.map((row, index) => (
-              <div key={row.user?.id ?? index} className="rounded-2xl bg-white/[0.05] p-4">
-                <p className="font-black">{row.user?.name ?? "Merchant"}</p>
-                <p className="text-xs text-slate-500">{row.count} transaksi sukses</p>
-                <p className="mt-2 text-sm text-emerald-300"><Money value={row.amount} /></p>
-              </div>
-            ))}
-          </div>
-        </div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Revenue Langganan" value={<Money value={data.summary.planRevenue} />} tone="green" />
+        <StatCard label="Upgrade Pending" value={data.summary.pendingPlanOrders} />
+        <StatCard label="Upgrade Gagal" value={data.summary.failedPlanOrders} tone="red" />
+        <StatCard label="Upgrade Expired" value={data.summary.expiredPlanOrders} />
       </section>
     </div>
   );

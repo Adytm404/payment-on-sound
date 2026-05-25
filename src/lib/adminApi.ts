@@ -23,6 +23,7 @@ export type AdminUser = {
   role: "admin" | "merchant";
   isActive: boolean;
   adminNote: string | null;
+  planExpiresAt?: string | null;
   createdAt?: string;
   settings?: { merchantName: string; pakasirProject: string; sandbox?: boolean } | null;
   plan?: { name: string; slug: string } | null;
@@ -39,6 +40,23 @@ export type AdminTransaction = {
   createdAt: string;
   completedAt?: string | null;
   user: { id: string; name: string; email: string };
+};
+
+export type AdminPlanOrder = {
+  orderId: string;
+  provider: string;
+  providerReference: string | null;
+  amount: number;
+  discountAmount: number;
+  finalAmount: number;
+  status: "pending" | "paid" | "failed" | "expired" | "cancelled" | string;
+  paymentUrl: string | null;
+  paidAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  user: { id: string; name: string; email: string };
+  plan: { name: string; slug: string };
+  promoCode: { code: string; name: string } | null;
 };
 
 export type AdminPlan = Plan & { _count?: { users: number } };
@@ -63,20 +81,18 @@ export const adminApi = {
     return request<{
       summary: {
         users: number;
+        proUsers: number;
         transactions: number;
         completed: number;
         pending: number;
         income: number;
         fees: number;
         todayIncome: number;
+        planRevenue: number;
+        pendingPlanOrders: number;
+        failedPlanOrders: number;
+        expiredPlanOrders: number;
       };
-      recentTransactions: AdminTransaction[];
-      topMerchants: Array<{
-        user: { id: string; name: string; email: string } | null;
-        amount: number;
-        fee: number;
-        count: number;
-      }>;
     }>("/admin/dashboard");
   },
 
@@ -109,9 +125,9 @@ export const adminApi = {
       if (v !== undefined && v !== "") qs.set(k, String(v));
     });
     return request<{
-      data: AdminTransaction[];
+      data: AdminPlanOrder[];
       pagination: Pagination;
-      summary: { income: number; adminFee: number; pending: number };
+      summary: { income: number; pending: number; failed: number; expired: number };
     }>(`/admin/transactions?${qs}`);
   },
 

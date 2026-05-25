@@ -8,7 +8,7 @@ const links = [
   { to: "/admin/plans", label: "Plan", icon: "badge-dollar-sign" },
   { to: "/admin/promos", label: "Promo", icon: "ticket-percent" },
   { to: "/admin/settings", label: "Setting", icon: "settings" },
-  { to: "/admin/transactions", label: "Transaksi", icon: "receipt-text" },
+  { to: "/admin/transactions", label: "Langganan", icon: "receipt-text" },
   { to: "/admin/reports", label: "Laporan", icon: "bar-chart-3" },
 ];
 

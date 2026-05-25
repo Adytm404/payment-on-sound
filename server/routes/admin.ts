@@ -63,61 +63,47 @@ router.get("/dashboard", async (_req, res) => {
 
   const [
     users,
+    proUsers,
     transactions,
     completed,
     pending,
     income,
     fees,
     todayIncome,
-    recentTransactions,
-    topMerchants,
+    planRevenue,
+    pendingPlanOrders,
+    failedPlanOrders,
+    expiredPlanOrders,
   ] = await Promise.all([
     prisma.user.count(),
+    prisma.user.count({ where: { plan: { slug: "pro" }, OR: [{ planExpiresAt: null }, { planExpiresAt: { gt: new Date() } }] } }),
     prisma.transaction.count(),
     prisma.transaction.count({ where: { status: "completed" } }),
     prisma.transaction.count({ where: { status: "pending" } }),
     prisma.transaction.aggregate({ where: { status: "completed" }, _sum: { amount: true } }),
     prisma.transaction.aggregate({ where: { status: "completed" }, _sum: { fee: true } }),
     prisma.transaction.aggregate({ where: { status: "completed", createdAt: { gte: today } }, _sum: { amount: true } }),
-    prisma.transaction.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 12,
-      include: { user: { select: { id: true, name: true, email: true } } },
-    }),
-    prisma.transaction.groupBy({
-      by: ["userId"],
-      where: { status: "completed" },
-      _sum: { amount: true, fee: true },
-      _count: { _all: true },
-      orderBy: { _sum: { amount: "desc" } },
-      take: 5,
-    }),
+    prisma.planOrder.aggregate({ where: { status: "paid" }, _sum: { finalAmount: true } }),
+    prisma.planOrder.count({ where: { status: "pending" } }),
+    prisma.planOrder.count({ where: { status: "failed" } }),
+    prisma.planOrder.count({ where: { status: "expired" } }),
   ]);
-
-  const merchantIds = topMerchants.map((row) => row.userId);
-  const merchantUsers = await prisma.user.findMany({
-    where: { id: { in: merchantIds } },
-    select: { id: true, name: true, email: true },
-  });
-  const userMap = new Map(merchantUsers.map((user) => [user.id.toString(), user]));
 
   res.json(toJson({
     summary: {
       users,
+      proUsers,
       transactions,
       completed,
       pending,
       income: income._sum.amount ?? 0,
       fees: fees._sum.fee ?? 0,
       todayIncome: todayIncome._sum.amount ?? 0,
+      planRevenue: planRevenue._sum.finalAmount ?? 0,
+      pendingPlanOrders,
+      failedPlanOrders,
+      expiredPlanOrders,
     },
-    recentTransactions,
-    topMerchants: topMerchants.map((row) => ({
-      user: userMap.get(row.userId.toString()) ?? null,
-      amount: row._sum.amount ?? 0,
-      fee: row._sum.fee ?? 0,
-      count: row._count._all,
-    })),
   }));
 });
 
@@ -143,6 +129,7 @@ router.get("/users", async (req, res) => {
         role: true,
         isActive: true,
         adminNote: true,
+        planExpiresAt: true,
         createdAt: true,
         _count: { select: { transactions: true } },
         settings: { select: { merchantName: true, pakasirProject: true } },
@@ -259,8 +246,10 @@ router.get("/users/:userId", async (req, res) => {
         role: true,
         isActive: true,
         adminNote: true,
+        planExpiresAt: true,
         createdAt: true,
         settings: { select: { merchantName: true, pakasirProject: true, sandbox: true } },
+        plan: { select: { name: true, slug: true } },
       },
     }),
     prisma.transaction.aggregate({ where: { userId, status: "completed" }, _sum: { amount: true }, _count: true }),
@@ -304,35 +293,35 @@ router.get("/transactions", async (req, res) => {
   const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
   const search = String(req.query.search ?? "").trim();
   const status = String(req.query.status ?? "all");
-  const where: Prisma.TransactionWhereInput = {};
-  if (["pending", "completed", "cancelled", "expired", "failed"].includes(status)) where.status = status as any;
+  const where: Prisma.PlanOrderWhereInput = {};
+  if (["pending", "paid", "failed", "expired", "cancelled"].includes(status)) where.status = status as any;
   if (search) {
     const amount = Number(search.replace(/\D/g, ""));
     where.OR = [
       { orderId: { contains: search } },
-      { description: { contains: search } },
       { user: { name: { contains: search } } },
       { user: { email: { contains: search } } },
-      ...(Number.isFinite(amount) && amount > 0 ? [{ amount }, { totalPayment: amount }] : []),
+      ...(Number.isFinite(amount) && amount > 0 ? [{ amount }, { finalAmount: amount }] : []),
     ];
   }
-  const [total, data, income, fees, pending] = await Promise.all([
-    prisma.transaction.count({ where }),
-    prisma.transaction.findMany({
+  const [total, data, paid, pending, failed, expired] = await Promise.all([
+    prisma.planOrder.count({ where }),
+    prisma.planOrder.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
-      include: { user: { select: { id: true, name: true, email: true } } },
+      include: { user: { select: { id: true, name: true, email: true } }, plan: { select: { name: true, slug: true } }, promoCode: { select: { code: true, name: true } } },
     }),
-    prisma.transaction.aggregate({ where: { ...where, status: "completed" }, _sum: { amount: true } }),
-    prisma.transaction.aggregate({ where: { ...where, status: "completed" }, _sum: { fee: true } }),
-    prisma.transaction.aggregate({ where: { ...where, status: "pending" }, _sum: { amount: true } }),
+    prisma.planOrder.aggregate({ where: { ...where, status: "paid" }, _sum: { finalAmount: true } }),
+    prisma.planOrder.aggregate({ where: { ...where, status: "pending" }, _sum: { finalAmount: true } }),
+    prisma.planOrder.count({ where: { ...where, status: "failed" } }),
+    prisma.planOrder.count({ where: { ...where, status: "expired" } }),
   ]);
   res.json(toJson({
     data,
     pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
-    summary: { income: income._sum.amount ?? 0, adminFee: fees._sum.fee ?? 0, pending: pending._sum.amount ?? 0 },
+    summary: { income: paid._sum.finalAmount ?? 0, pending: pending._sum.finalAmount ?? 0, failed, expired },
   }));
 });
 

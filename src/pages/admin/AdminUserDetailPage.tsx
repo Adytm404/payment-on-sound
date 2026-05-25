@@ -4,6 +4,11 @@ import { adminApi } from "@/lib/adminApi";
 import { showToast } from "@/components/Toast";
 import { Money, StatCard, StatusBadge } from "./AdminShared";
 
+function formatExpiry(value?: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+}
+
 export default function AdminUserDetailPage() {
   const { userId = "" } = useParams();
   const [data, setData] = useState<Awaited<ReturnType<typeof adminApi.user>> | null>(null);
@@ -36,7 +41,8 @@ export default function AdminUserDetailPage() {
           <p className="text-xs uppercase tracking-[0.28em] text-red-300">Merchant Detail</p>
           <h2 className="mt-2 text-4xl font-black">{data.user.name}</h2>
           <p className="text-slate-400">{data.user.email}</p>
-          <div className="mt-5 flex flex-wrap gap-3 text-sm"><span className="rounded-full bg-white/10 px-3 py-1 capitalize">{data.user.role}</span><span className={data.user.isActive ? "rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-300" : "rounded-full bg-red-500/15 px-3 py-1 text-red-300"}>{data.user.isActive ? "Aktif" : "Nonaktif"}</span><span className="rounded-full bg-white/10 px-3 py-1">{data.user.settings?.merchantName ?? "Merchant"}</span></div>
+          <div className="mt-5 flex flex-wrap gap-3 text-sm"><span className="rounded-full bg-white/10 px-3 py-1 capitalize">{data.user.role}</span><span className={data.user.isActive ? "rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-300" : "rounded-full bg-red-500/15 px-3 py-1 text-red-300"}>{data.user.isActive ? "Aktif" : "Nonaktif"}</span><span className="rounded-full bg-white/10 px-3 py-1">{data.user.settings?.merchantName ?? "Merchant"}</span><span className="rounded-full bg-white/10 px-3 py-1">Plan {data.user.plan?.name ?? "Free"}</span></div>
+          {data.user.plan?.slug === "pro" ? <p className="mt-4 text-sm font-bold text-emerald-300">Pro aktif sampai {formatExpiry(data.user.planExpiresAt)}</p> : null}
         </div>
         <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-6">
           <h3 className="text-xl font-black">Kontrol Status</h3>
