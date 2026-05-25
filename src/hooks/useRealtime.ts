@@ -34,6 +34,9 @@ export function useRealtime() {
       source.addEventListener(event, onTransaction);
     });
     source.addEventListener("settings:updated", onSettings);
+    source.onerror = () => {
+      source.close();
+    };
 
     return () => {
       TRANSACTION_EVENTS.forEach((event) => {

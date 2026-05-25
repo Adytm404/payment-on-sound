@@ -13,6 +13,7 @@ import CreatePaymentPage from "./pages/CreatePaymentPage";
 import QRPaymentPage from "./pages/QRPaymentPage";
 import ReportPage from "./pages/ReportPage";
 import SettingsPage from "./pages/SettingsPage";
+import PlanManagementPage from "./pages/PlanManagementPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AuthPage from "./pages/AuthPage";
 import PublicPaymentPage from "./pages/PublicPaymentPage";
@@ -63,6 +64,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="transaksi/:orderId" element={<QRPaymentPage />} />
               <Route path="laporan" element={<ReportPage />} />
               <Route path="pengaturan" element={<SettingsPage />} />
+              <Route path="pengaturan/plan" element={<PlanManagementPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>

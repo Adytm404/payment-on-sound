@@ -3,6 +3,7 @@ import { prisma } from "../db";
 import { transactionDetail } from "../utils/pakasir";
 import { publicTransaction } from "../utils/transactionPresenter";
 import { broadcastToUser } from "../realtime";
+import { getUserPlan } from "../utils/plans";
 
 const router = Router();
 
@@ -23,6 +24,11 @@ router.get("/transactions/:orderId", async (req, res) => {
     res.status(404).json({ message: "Transaksi tidak ditemukan" });
     return;
   }
+  const plan = await getUserPlan(tx.userId);
+  if (!plan?.canUsePublicPaymentPage) {
+    res.status(403).json({ message: "Link pembayaran pelanggan tersedia di plan Pro." });
+    return;
+  }
   res.json({ transaction: publicTransaction(tx) });
 });
 
@@ -30,6 +36,11 @@ router.post("/transactions/:orderId/check", async (req, res) => {
   const tx = await findPublicTransaction(req.params.orderId);
   if (!tx) {
     res.status(404).json({ message: "Transaksi tidak ditemukan" });
+    return;
+  }
+  const plan = await getUserPlan(tx.userId);
+  if (!plan?.canUsePublicPaymentPage) {
+    res.status(403).json({ message: "Link pembayaran pelanggan tersedia di plan Pro." });
     return;
   }
 

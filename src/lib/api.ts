@@ -263,7 +263,7 @@ export const api = {
   },
 
   currentPlan() {
-    return request<{ plan: Plan | null }>("/plans/current");
+    return request<{ plan: Plan | null; planExpiresAt: string | null }>("/plans/current");
   },
 
   choosePlan(slug: string) {

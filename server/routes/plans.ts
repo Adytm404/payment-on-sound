@@ -14,8 +14,12 @@ router.get("/", async (_req, res) => {
 });
 
 router.get("/current", async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: BigInt(req.auth!.userId) },
+    select: { planExpiresAt: true },
+  });
   const plan = await getUserPlan(BigInt(req.auth!.userId));
-  res.json({ plan: publicPlan(plan) });
+  res.json({ plan: publicPlan(plan), planExpiresAt: user?.planExpiresAt ?? null });
 });
 
 router.put("/current", requireActiveUser, async (req, res) => {
@@ -29,12 +33,12 @@ router.put("/current", requireActiveUser, async (req, res) => {
     res.status(404).json({ message: "Plan tidak tersedia" });
     return;
   }
-  await prisma.user.update({ where: { id: BigInt(req.auth!.userId) }, data: { planId: plan.id } });
+  await prisma.user.update({ where: { id: BigInt(req.auth!.userId) }, data: { planId: plan.id, planExpiresAt: slug === "free" ? null : undefined } });
   res.json({ plan: publicPlan(plan) });
 });
 
-function addDays(days: number) {
-  const d = new Date();
+function addDays(days: number, from = new Date()) {
+  const d = new Date(from);
   d.setDate(d.getDate() + days);
   return d;
 }
@@ -90,7 +94,8 @@ router.post("/upgrade", requireActiveUser, async (req, res) => {
   const discountAmount = discountFor(plan.price, promo);
   const finalAmount = Math.max(0, plan.price - discountAmount);
   const orderId = `PLAN${Date.now()}${userId.toString()}`.slice(0, 50);
-  const expiresAt = addDays(promo?.type === "free_trial" ? (promo.trialDays ?? plan.billingPeriodDays ?? 30) : (plan.billingPeriodDays ?? 30));
+  const baseExpiry = user.planExpiresAt && user.planExpiresAt > new Date() ? user.planExpiresAt : new Date();
+  const expiresAt = addDays(promo?.type === "free_trial" ? (promo.trialDays ?? plan.billingPeriodDays ?? 30) : (plan.billingPeriodDays ?? 30), baseExpiry);
 
   if (finalAmount <= 0) {
     const order = await prisma.$transaction(async (tx) => {

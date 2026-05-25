@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { toJson } from "../utils/json";
+import { getUserPlan, retentionStart } from "../utils/plans";
 
 const router = Router();
 router.use(requireAuth);
@@ -9,6 +10,8 @@ router.use(requireAuth);
 router.get("/", async (req, res) => {
   const userId = BigInt(req.auth!.userId);
   const now = new Date();
+  const plan = await getUserPlan(userId);
+  const retention = retentionStart(plan?.reportRetentionDays);
 
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
@@ -25,7 +28,7 @@ router.get("/", async (req, res) => {
     recentTransactions,
   ] = await Promise.all([
     prisma.transaction.aggregate({
-      where: { userId, status: "completed" },
+      where: { userId, status: "completed", ...(retention ? { createdAt: { gte: retention } } : {}) },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
@@ -42,7 +45,7 @@ router.get("/", async (req, res) => {
     }),
     prisma.transaction.count({ where: { userId, status: "pending" } }),
     prisma.transaction.findMany({
-      where: { userId },
+      where: { userId, ...(retention ? { createdAt: { gte: retention } } : {}) },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
