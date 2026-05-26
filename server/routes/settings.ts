@@ -4,15 +4,18 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { requireActiveUser } from "../middleware/admin";
 import { broadcastToUser } from "../realtime";
+import { bankNameByCode } from "../utils/banks";
 
 const router = Router();
 router.use(requireAuth);
 
 const schema = z.object({
   merchantName: z.string().min(1).max(100),
-  project: z.string().max(100),
-  apiKey: z.string().max(5000),
-  sandbox: z.boolean(),
+  legalName: z.string().max(100).optional().nullable(),
+  ktpNumber: z.string().max(32).optional().nullable(),
+  withdrawBankCode: z.string().max(50).optional().nullable(),
+  withdrawAccountNumber: z.string().max(64).optional().nullable(),
+  withdrawAccountName: z.string().max(100).optional().nullable(),
   ttsEnabled: z.boolean(),
   ttsVoiceURI: z.string().max(255),
   ttsRate: z.number().min(0.1).max(2),
@@ -24,8 +27,30 @@ function shape(settings: Awaited<ReturnType<typeof prisma.userSettings.findUniqu
   if (!settings) return null;
   return {
     merchantName: settings.merchantName,
-    project: settings.pakasirProject,
-    apiKey: settings.pakasirApiKey ? `••••••••${settings.pakasirApiKey.slice(-4)}` : "",
+    merchantStatus: settings.merchantStatus,
+    legalName: settings.legalName ?? "",
+    ktpNumber: settings.ktpNumber ?? "",
+    withdrawBankCode: settings.withdrawBankCode ?? "",
+    withdrawBankName: settings.withdrawBankName ?? "",
+    withdrawAccountNumber: settings.withdrawAccountNumber ?? "",
+    withdrawAccountName: settings.withdrawAccountName ?? "",
+    merchantNameValid: settings.merchantNameValid,
+    legalNameValid: settings.legalNameValid,
+    ktpNumberValid: settings.ktpNumberValid,
+    withdrawBankValid: settings.withdrawBankValid,
+    withdrawAccountNumberValid: settings.withdrawAccountNumberValid,
+    withdrawAccountNameValid: settings.withdrawAccountNameValid,
+    merchantNameNote: settings.merchantNameNote ?? "",
+    legalNameNote: settings.legalNameNote ?? "",
+    ktpNumberNote: settings.ktpNumberNote ?? "",
+    withdrawBankNote: settings.withdrawBankNote ?? "",
+    withdrawAccountNumberNote: settings.withdrawAccountNumberNote ?? "",
+    withdrawAccountNameNote: settings.withdrawAccountNameNote ?? "",
+    verificationNote: settings.verificationNote ?? "",
+    submittedAt: settings.submittedAt,
+    verifiedAt: settings.verifiedAt,
+    project: settings.pakasirProject ? "configured" : "",
+    apiKey: settings.pakasirApiKey ? "configured" : "",
     hasApiKey: Boolean(settings.pakasirApiKey),
     sandbox: settings.sandbox,
     ttsEnabled: settings.ttsEnabled,
@@ -56,18 +81,24 @@ router.put("/", requireActiveUser, async (req, res) => {
 
   const userId = BigInt(req.auth!.userId);
   const current = await prisma.userSettings.findUnique({ where: { userId } });
-  const apiKey = parsed.data.apiKey.startsWith("••••")
-    ? current?.pakasirApiKey ?? ""
-    : parsed.data.apiKey;
+  const bankCode = parsed.data.withdrawBankCode?.trim() || null;
+  const bankName = bankCode ? bankNameByCode(bankCode) : "";
+  const nextStatus = current?.merchantStatus === "verified" ? "verified" : current?.merchantStatus === "pending_review" ? "pending_review" : "draft";
 
   const settings = await prisma.userSettings.upsert({
     where: { userId },
     create: {
       userId,
       merchantName: parsed.data.merchantName,
-      pakasirProject: parsed.data.project,
-      pakasirApiKey: apiKey,
-      sandbox: parsed.data.sandbox,
+      merchantStatus: nextStatus,
+      legalName: parsed.data.legalName?.trim() || null,
+      ktpNumber: parsed.data.ktpNumber?.trim() || null,
+      withdrawBankCode: bankCode,
+      withdrawBankName: bankName,
+      withdrawAccountNumber: parsed.data.withdrawAccountNumber?.trim() || null,
+      withdrawAccountName: parsed.data.withdrawAccountName?.trim() || null,
+      pakasirProject: "",
+      pakasirApiKey: "",
       ttsEnabled: parsed.data.ttsEnabled,
       ttsVoiceURI: parsed.data.ttsVoiceURI,
       ttsRate: parsed.data.ttsRate,
@@ -76,9 +107,13 @@ router.put("/", requireActiveUser, async (req, res) => {
     },
     update: {
       merchantName: parsed.data.merchantName,
-      pakasirProject: parsed.data.project,
-      pakasirApiKey: apiKey,
-      sandbox: parsed.data.sandbox,
+      merchantStatus: nextStatus,
+      legalName: parsed.data.legalName?.trim() || null,
+      ktpNumber: parsed.data.ktpNumber?.trim() || null,
+      withdrawBankCode: bankCode,
+      withdrawBankName: bankName,
+      withdrawAccountNumber: parsed.data.withdrawAccountNumber?.trim() || null,
+      withdrawAccountName: parsed.data.withdrawAccountName?.trim() || null,
       ttsEnabled: parsed.data.ttsEnabled,
       ttsVoiceURI: parsed.data.ttsVoiceURI,
       ttsRate: parsed.data.ttsRate,
@@ -89,6 +124,24 @@ router.put("/", requireActiveUser, async (req, res) => {
 
   broadcastToUser(userId, "settings:updated", { type: "settings:updated" });
   res.json({ settings: shape(settings) });
+});
+
+router.post("/submit-verification", requireActiveUser, async (req, res) => {
+  const userId = BigInt(req.auth!.userId);
+  const settings = await prisma.userSettings.findUnique({ where: { userId } });
+  if (!settings) {
+    res.status(400).json({ message: "Data merchant belum lengkap" });
+    return;
+  }
+  if (!settings.merchantName || !settings.legalName || !settings.ktpNumber || !settings.withdrawBankCode || !settings.withdrawAccountNumber || !settings.withdrawAccountName) {
+    res.status(422).json({ message: "Lengkapi semua data merchant sebelum submit verifikasi" });
+    return;
+  }
+  const updated = await prisma.userSettings.update({
+    where: { userId },
+    data: { merchantStatus: "pending_review", submittedAt: new Date() },
+  });
+  res.json({ settings: shape(updated) });
 });
 
 export { router as settingsRouter };

@@ -38,8 +38,11 @@ function dateStart(period?: string) {
 
 async function getSettings(userId: bigint) {
   const settings = await prisma.userSettings.findUnique({ where: { userId } });
+  if (settings?.merchantStatus !== "verified") {
+    throw new Error("Data merchant belum diverifikasi admin");
+  }
   if (!settings?.pakasirProject || !settings?.pakasirApiKey) {
-    throw new Error("Pengaturan Pakasir belum lengkap");
+    throw new Error("Integrasi pembayaran belum dikonfigurasi admin");
   }
   return {
     project: settings.pakasirProject,

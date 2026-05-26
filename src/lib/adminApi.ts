@@ -76,6 +76,37 @@ export type PromoCode = {
   isActive: boolean;
 };
 
+export type AdminMerchant = {
+  userId: string;
+  merchantName: string;
+  merchantStatus: "draft" | "pending_review" | "needs_revision" | "verified" | "rejected";
+  legalName: string | null;
+  ktpNumber: string | null;
+  withdrawBankCode: string | null;
+  withdrawBankName: string | null;
+  withdrawAccountNumber: string | null;
+  withdrawAccountName: string | null;
+  merchantNameValid: boolean;
+  legalNameValid: boolean;
+  ktpNumberValid: boolean;
+  withdrawBankValid: boolean;
+  withdrawAccountNumberValid: boolean;
+  withdrawAccountNameValid: boolean;
+  merchantNameNote: string | null;
+  legalNameNote: string | null;
+  ktpNumberNote: string | null;
+  withdrawBankNote: string | null;
+  withdrawAccountNumberNote: string | null;
+  withdrawAccountNameNote: string | null;
+  verificationNote: string | null;
+  submittedAt: string | null;
+  verifiedAt: string | null;
+  pakasirProject: string;
+  pakasirApiKey: string;
+  sandbox: boolean;
+  user: { id: string; name: string; email: string; isActive: boolean };
+};
+
 export const adminApi = {
   dashboard() {
     return request<{
@@ -164,5 +195,29 @@ export const adminApi = {
 
   planOrders() {
     return request<{ orders: any[] }>("/admin/plan-orders");
+  },
+
+  merchants(status = "all") {
+    return request<{ data: AdminMerchant[] }>(`/admin/merchants?status=${encodeURIComponent(status)}`);
+  },
+
+  merchant(userId: string) {
+    return request<{ merchant: AdminMerchant }>(`/admin/merchants/${userId}`);
+  },
+
+  saveMerchantReview(userId: string, input: any) {
+    return request<{ merchant: AdminMerchant }>(`/admin/merchants/${userId}/review`, { method: "PUT", body: JSON.stringify(input) });
+  },
+
+  approveMerchant(userId: string) {
+    return request<{ merchant: AdminMerchant }>(`/admin/merchants/${userId}/approve`, { method: "POST" });
+  },
+
+  requestMerchantRevision(userId: string, verificationNote: string) {
+    return request<{ merchant: AdminMerchant }>(`/admin/merchants/${userId}/request-revision`, { method: "POST", body: JSON.stringify({ verificationNote }) });
+  },
+
+  rejectMerchant(userId: string, verificationNote: string) {
+    return request<{ merchant: AdminMerchant }>(`/admin/merchants/${userId}/reject`, { method: "POST", body: JSON.stringify({ verificationNote }) });
   },
 };

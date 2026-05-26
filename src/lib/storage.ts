@@ -19,6 +19,28 @@ export type AppConfig = {
   apiKey: string;
   sandbox: boolean;
   merchantName: string;
+  merchantStatus: "draft" | "pending_review" | "needs_revision" | "verified" | "rejected";
+  legalName: string;
+  ktpNumber: string;
+  withdrawBankCode: string;
+  withdrawBankName: string;
+  withdrawAccountNumber: string;
+  withdrawAccountName: string;
+  merchantNameValid: boolean;
+  legalNameValid: boolean;
+  ktpNumberValid: boolean;
+  withdrawBankValid: boolean;
+  withdrawAccountNumberValid: boolean;
+  withdrawAccountNameValid: boolean;
+  merchantNameNote: string;
+  legalNameNote: string;
+  ktpNumberNote: string;
+  withdrawBankNote: string;
+  withdrawAccountNumberNote: string;
+  withdrawAccountNameNote: string;
+  verificationNote: string;
+  submittedAt?: string | null;
+  verifiedAt?: string | null;
   ttsEnabled: boolean;
   ttsVoiceURI: string;
   ttsRate: number;
@@ -36,6 +58,28 @@ const DEFAULT_CONFIG: AppConfig = {
   apiKey: "",
   sandbox: true,
   merchantName: "Merchant",
+  merchantStatus: "draft",
+  legalName: "",
+  ktpNumber: "",
+  withdrawBankCode: "",
+  withdrawBankName: "",
+  withdrawAccountNumber: "",
+  withdrawAccountName: "",
+  merchantNameValid: false,
+  legalNameValid: false,
+  ktpNumberValid: false,
+  withdrawBankValid: false,
+  withdrawAccountNumberValid: false,
+  withdrawAccountNameValid: false,
+  merchantNameNote: "",
+  legalNameNote: "",
+  ktpNumberNote: "",
+  withdrawBankNote: "",
+  withdrawAccountNumberNote: "",
+  withdrawAccountNameNote: "",
+  verificationNote: "",
+  submittedAt: null,
+  verifiedAt: null,
   ttsEnabled: true,
   ttsVoiceURI: "",
   ttsRate: 1,

@@ -116,6 +116,28 @@ function mapPublicTx(tx: any): PublicTransaction {
 function mapConfig(settings: any): AppConfig {
   return {
     merchantName: settings.merchantName ?? "Merchant",
+    merchantStatus: settings.merchantStatus ?? "draft",
+    legalName: settings.legalName ?? "",
+    ktpNumber: settings.ktpNumber ?? "",
+    withdrawBankCode: settings.withdrawBankCode ?? "",
+    withdrawBankName: settings.withdrawBankName ?? "",
+    withdrawAccountNumber: settings.withdrawAccountNumber ?? "",
+    withdrawAccountName: settings.withdrawAccountName ?? "",
+    merchantNameValid: Boolean(settings.merchantNameValid),
+    legalNameValid: Boolean(settings.legalNameValid),
+    ktpNumberValid: Boolean(settings.ktpNumberValid),
+    withdrawBankValid: Boolean(settings.withdrawBankValid),
+    withdrawAccountNumberValid: Boolean(settings.withdrawAccountNumberValid),
+    withdrawAccountNameValid: Boolean(settings.withdrawAccountNameValid),
+    merchantNameNote: settings.merchantNameNote ?? "",
+    legalNameNote: settings.legalNameNote ?? "",
+    ktpNumberNote: settings.ktpNumberNote ?? "",
+    withdrawBankNote: settings.withdrawBankNote ?? "",
+    withdrawAccountNumberNote: settings.withdrawAccountNumberNote ?? "",
+    withdrawAccountNameNote: settings.withdrawAccountNameNote ?? "",
+    verificationNote: settings.verificationNote ?? "",
+    submittedAt: settings.submittedAt ?? null,
+    verifiedAt: settings.verifiedAt ?? null,
     project: settings.project ?? "",
     apiKey: settings.apiKey ?? "",
     sandbox: Boolean(settings.sandbox),
@@ -160,9 +182,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({
         merchantName: config.merchantName,
-        project: config.project,
-        apiKey: config.apiKey,
-        sandbox: config.sandbox,
+        legalName: config.legalName,
+        ktpNumber: config.ktpNumber,
+        withdrawBankCode: config.withdrawBankCode,
+        withdrawAccountNumber: config.withdrawAccountNumber,
+        withdrawAccountName: config.withdrawAccountName,
         ttsEnabled: config.ttsEnabled,
         ttsVoiceURI: config.ttsVoiceURI,
         ttsRate: config.ttsRate,
@@ -170,6 +194,11 @@ export const api = {
         ttsVolume: config.ttsVolume,
       }),
     });
+    return mapConfig(res.settings);
+  },
+
+  async submitMerchantVerification() {
+    const res = await request<{ settings: any }>("/settings/submit-verification", { method: "POST" });
     return mapConfig(res.settings);
   },
 

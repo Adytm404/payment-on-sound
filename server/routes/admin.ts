@@ -50,6 +50,25 @@ const promoSchema = z.object({
   isActive: z.boolean(),
 });
 
+const merchantReviewSchema = z.object({
+  pakasirProject: z.string().max(100),
+  pakasirApiKey: z.string().max(5000),
+  sandbox: z.boolean(),
+  merchantNameValid: z.boolean(),
+  legalNameValid: z.boolean(),
+  ktpNumberValid: z.boolean(),
+  withdrawBankValid: z.boolean(),
+  withdrawAccountNumberValid: z.boolean(),
+  withdrawAccountNameValid: z.boolean(),
+  merchantNameNote: z.string().max(1000).optional().nullable(),
+  legalNameNote: z.string().max(1000).optional().nullable(),
+  ktpNumberNote: z.string().max(1000).optional().nullable(),
+  withdrawBankNote: z.string().max(1000).optional().nullable(),
+  withdrawAccountNumberNote: z.string().max(1000).optional().nullable(),
+  withdrawAccountNameNote: z.string().max(1000).optional().nullable(),
+  verificationNote: z.string().max(1000).optional().nullable(),
+});
+
 function userWhere(search: string): Prisma.UserWhereInput {
   if (!search) return {};
   return {
@@ -188,6 +207,78 @@ router.put("/platform-settings", async (req, res) => {
 router.get("/promos", async (_req, res) => {
   const promos = await prisma.promoCode.findMany({ orderBy: { createdAt: "desc" } });
   res.json({ promos: toJson(promos) });
+});
+
+router.get("/merchants", async (req, res) => {
+  const status = String(req.query.status ?? "all");
+  const where: Prisma.UserSettingsWhereInput = {};
+  if (["draft", "pending_review", "needs_revision", "verified", "rejected"].includes(status)) where.merchantStatus = status as any;
+  const merchants = await prisma.userSettings.findMany({
+    where,
+    orderBy: [{ submittedAt: "desc" }, { updatedAt: "desc" }],
+    include: { user: { select: { id: true, name: true, email: true, isActive: true } } },
+    take: 100,
+  });
+  res.json({ data: toJson(merchants) });
+});
+
+router.get("/merchants/:userId", async (req, res) => {
+  const merchant = await prisma.userSettings.findUnique({
+    where: { userId: BigInt(req.params.userId) },
+    include: { user: { select: { id: true, name: true, email: true, isActive: true } } },
+  });
+  if (!merchant) {
+    res.status(404).json({ message: "Merchant tidak ditemukan" });
+    return;
+  }
+  res.json({ merchant: toJson({ ...merchant, pakasirApiKey: merchant.pakasirApiKey ? `••••••••${merchant.pakasirApiKey.slice(-4)}` : "" }) });
+});
+
+router.put("/merchants/:userId/review", async (req, res) => {
+  const parsed = merchantReviewSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(422).json({ message: "Data review merchant tidak valid" });
+    return;
+  }
+  const current = await prisma.userSettings.findUnique({ where: { userId: BigInt(req.params.userId) } });
+  const apiKey = parsed.data.pakasirApiKey.includes("••••") ? current?.pakasirApiKey ?? "" : parsed.data.pakasirApiKey.trim();
+  const merchant = await prisma.userSettings.update({
+    where: { userId: BigInt(req.params.userId) },
+    data: { ...parsed.data, pakasirApiKey: apiKey, pakasirProject: parsed.data.pakasirProject.trim() },
+  });
+  res.json({ merchant: toJson(merchant) });
+});
+
+router.post("/merchants/:userId/request-revision", async (req, res) => {
+  const merchant = await prisma.userSettings.update({
+    where: { userId: BigInt(req.params.userId) },
+    data: { merchantStatus: "needs_revision", verificationNote: String(req.body.verificationNote ?? "") },
+  });
+  res.json({ merchant: toJson(merchant) });
+});
+
+router.post("/merchants/:userId/reject", async (req, res) => {
+  const merchant = await prisma.userSettings.update({
+    where: { userId: BigInt(req.params.userId) },
+    data: { merchantStatus: "rejected", verificationNote: String(req.body.verificationNote ?? "") },
+  });
+  res.json({ merchant: toJson(merchant) });
+});
+
+router.post("/merchants/:userId/approve", async (req, res) => {
+  const userId = BigInt(req.params.userId);
+  const merchant = await prisma.userSettings.findUnique({ where: { userId } });
+  if (!merchant) {
+    res.status(404).json({ message: "Merchant tidak ditemukan" });
+    return;
+  }
+  const allValid = merchant.merchantNameValid && merchant.legalNameValid && merchant.ktpNumberValid && merchant.withdrawBankValid && merchant.withdrawAccountNumberValid && merchant.withdrawAccountNameValid;
+  if (!allValid || !merchant.pakasirProject || !merchant.pakasirApiKey) {
+    res.status(400).json({ message: "Tidak bisa approve. Lengkapi checklist dan integrasi Pakasir dulu." });
+    return;
+  }
+  const updated = await prisma.userSettings.update({ where: { userId }, data: { merchantStatus: "verified", verifiedAt: new Date(), verifiedByAdminId: BigInt(req.auth!.userId) } });
+  res.json({ merchant: toJson(updated) });
 });
 
 router.post("/promos", async (req, res) => {

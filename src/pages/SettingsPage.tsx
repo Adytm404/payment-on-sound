@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { api, type Plan } from "@/lib/api";
 import { useAuth } from "@/store/AuthContext";
 import { formatRupiah } from "@/lib/format";
+import { INDONESIAN_BANKS } from "@/lib/banks";
 
 function formatPlanNumber(value: number) {
   return formatRupiah(value);
@@ -26,16 +27,17 @@ export default function SettingsPage() {
   const { config, saveConfig, refresh } = useApp();
   const { logout } = useAuth();
 
-  const [project, setProject] = useState(config.project);
-  const [apiKey, setApiKey] = useState(config.apiKey);
   const [merchantName, setMerchantName] = useState(config.merchantName);
-  const [sandbox, setSandbox] = useState(config.sandbox);
+  const [legalName, setLegalName] = useState(config.legalName);
+  const [ktpNumber, setKtpNumber] = useState(config.ktpNumber);
+  const [withdrawBankCode, setWithdrawBankCode] = useState(config.withdrawBankCode);
+  const [withdrawAccountNumber, setWithdrawAccountNumber] = useState(config.withdrawAccountNumber);
+  const [withdrawAccountName, setWithdrawAccountName] = useState(config.withdrawAccountName);
   const [ttsEnabled, setTtsEnabled] = useState(config.ttsEnabled);
   const [ttsVoiceURI, setTtsVoiceURI] = useState(config.ttsVoiceURI);
   const [ttsRate, setTtsRate] = useState(config.ttsRate);
   const [ttsPitch, setTtsPitch] = useState(config.ttsPitch);
   const [ttsVolume, setTtsVolume] = useState(config.ttsVolume);
-  const [showApiKey, setShowApiKey] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<null | "transactions" | "all" | "logout">(
     null,
@@ -58,10 +60,12 @@ export default function SettingsPage() {
   }, []);
 
   const dirty =
-    project !== config.project ||
-    apiKey !== config.apiKey ||
-    sandbox !== config.sandbox ||
     merchantName !== config.merchantName ||
+    legalName !== config.legalName ||
+    ktpNumber !== config.ktpNumber ||
+    withdrawBankCode !== config.withdrawBankCode ||
+    withdrawAccountNumber !== config.withdrawAccountNumber ||
+    withdrawAccountName !== config.withdrawAccountName ||
     ttsEnabled !== config.ttsEnabled ||
     ttsVoiceURI !== config.ttsVoiceURI ||
     ttsRate !== config.ttsRate ||
@@ -69,19 +73,15 @@ export default function SettingsPage() {
     ttsVolume !== config.ttsVolume;
 
   const handleSave = () => {
-    if (!project.trim()) {
-      showToast("Slug proyek tidak boleh kosong", "error");
-      return;
-    }
-    if (!apiKey.trim()) {
-      showToast("API key tidak boleh kosong", "error");
-      return;
-    }
     saveConfig({
-      project: project.trim(),
-      apiKey: apiKey.trim(),
+      ...config,
       merchantName: merchantName.trim() || "Merchant",
-      sandbox,
+      legalName: legalName.trim(),
+      ktpNumber: ktpNumber.trim(),
+      withdrawBankCode,
+      withdrawBankName: INDONESIAN_BANKS.find((bank) => bank.code === withdrawBankCode)?.name ?? "",
+      withdrawAccountNumber: withdrawAccountNumber.trim(),
+      withdrawAccountName: withdrawAccountName.trim(),
       ttsEnabled,
       ttsVoiceURI: displayedVoices.some((voice) => voice.voiceURI === ttsVoiceURI)
         ? ttsVoiceURI
@@ -95,10 +95,7 @@ export default function SettingsPage() {
 
   const currentConfig = {
     ...config,
-    project,
-    apiKey,
     merchantName: merchantName.trim() || "Merchant",
-    sandbox,
     ttsEnabled,
     ttsVoiceURI: displayedVoices.some((voice) => voice.voiceURI === ttsVoiceURI)
       ? ttsVoiceURI
@@ -106,6 +103,27 @@ export default function SettingsPage() {
     ttsRate,
     ttsPitch,
     ttsVolume,
+  };
+
+  const handleSubmitVerification = async () => {
+    await saveConfig({
+      ...config,
+      merchantName: merchantName.trim() || "Merchant",
+      legalName: legalName.trim(),
+      ktpNumber: ktpNumber.trim(),
+      withdrawBankCode,
+      withdrawBankName: INDONESIAN_BANKS.find((bank) => bank.code === withdrawBankCode)?.name ?? "",
+      withdrawAccountNumber: withdrawAccountNumber.trim(),
+      withdrawAccountName: withdrawAccountName.trim(),
+      ttsEnabled,
+      ttsVoiceURI: displayedVoices.some((voice) => voice.voiceURI === ttsVoiceURI) ? ttsVoiceURI : "",
+      ttsRate,
+      ttsPitch,
+      ttsVolume,
+    });
+    const next = await api.submitMerchantVerification();
+    showToast("Data merchant dikirim untuk verifikasi", "success");
+    setMerchantName(next.merchantName);
   };
 
   const handlePreviewVoice = () => {
@@ -167,18 +185,21 @@ export default function SettingsPage() {
         </button>
       </section>
 
-      {/* Pakasir config */}
+      {/* Merchant verification */}
       <section className="card p-5">
         <div className="mb-4 flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-50 text-primary">
-            <Icon name="key" size={16} />
+            <Icon name="badge-check" size={16} />
           </div>
           <div>
-            <h2 className="text-sm font-semibold">Pakasir API</h2>
-            <p className="text-[11px] text-ink-muted">
-              Dapatkan dari halaman detail proyek di app.pakasir.com
-            </p>
+            <h2 className="text-sm font-semibold">Pendaftaran Merchant</h2>
+            <p className="text-[11px] text-ink-muted">Admin akan verifikasi data dan mengaktifkan integrasi pembayaran</p>
           </div>
+        </div>
+
+        <div className="mb-4 rounded-2xl bg-surface-alt px-4 py-3 text-xs font-semibold text-ink-muted">
+          Status: <span className="text-ink">{config.merchantStatus === "pending_review" ? "Menunggu verifikasi" : config.merchantStatus === "needs_revision" ? "Perlu perbaikan" : config.merchantStatus === "verified" ? "Terverifikasi" : config.merchantStatus === "rejected" ? "Ditolak" : "Draft"}</span>
+          {config.verificationNote ? <p className="mt-1 text-rose-600">Catatan admin: {config.verificationNote}</p> : null}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -197,69 +218,30 @@ export default function SettingsPage() {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-ink-muted">
-              Project Slug
+              Nama Sesuai KTP
             </label>
             <input
               type="text"
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-              placeholder="contoh: depodomain"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="input font-mono text-xs"
+              value={legalName}
+              onChange={(e) => setLegalName(e.target.value)}
+              placeholder="Nama lengkap sesuai KTP"
+              className="input"
             />
+            {config.legalNameNote ? <p className="mt-1 text-xs text-rose-600">{config.legalNameNote}</p> : null}
           </div>
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-ink-muted">
-              API Key
+              Nomor KTP
             </label>
-            <div className="relative">
-              <input
-                type={showApiKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="••••••••••••"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                className="input pr-12 font-mono text-xs"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted"
-                aria-label={showApiKey ? "Sembunyikan" : "Tampilkan"}
-              >
-                <Icon name={showApiKey ? "eye-off" : "eye"} size={16} />
-              </button>
-            </div>
+            <input type="text" inputMode="numeric" value={ktpNumber} onChange={(e) => setKtpNumber(e.target.value)} placeholder="16 digit nomor KTP" className="input" />
+            {config.ktpNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.ktpNumberNote}</p> : null}
           </div>
 
-          <label className="mt-1 flex items-center justify-between gap-3 rounded-2xl bg-surface-alt px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Mode Sandbox</p>
-              <p className="text-[11px] text-ink-muted">
-                Aktifkan tombol simulasi pembayaran di halaman QR
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSandbox((v) => !v)}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                sandbox ? "bg-primary" : "bg-zinc-300"
-              }`}
-              role="switch"
-              aria-checked={sandbox}
-            >
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
-                  sandbox ? "left-[22px]" : "left-0.5"
-                }`}
-              />
-            </button>
-          </label>
+          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Bank Penarikan</label><select className="input" value={withdrawBankCode} onChange={(e) => setWithdrawBankCode(e.target.value)}><option value="">Pilih bank</option>{INDONESIAN_BANKS.map((bank) => <option key={`${bank.code}-${bank.name}`} value={bank.code}>{bank.name} ({bank.code})</option>)}</select>{config.withdrawBankNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawBankNote}</p> : null}</div>
+          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nomor Rekening Penarikan</label><input className="input" inputMode="numeric" value={withdrawAccountNumber} onChange={(e) => setWithdrawAccountNumber(e.target.value)} placeholder="Nomor rekening" />{config.withdrawAccountNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNumberNote}</p> : null}</div>
+          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nama Rekening Penarikan</label><input className="input" value={withdrawAccountName} onChange={(e) => setWithdrawAccountName(e.target.value)} placeholder="Nama pemilik rekening" />{config.withdrawAccountNameNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNameNote}</p> : null}</div>
+          <button type="button" onClick={handleSubmitVerification} className="btn-primary w-full">Kirim Untuk Verifikasi</button>
         </div>
       </section>
 

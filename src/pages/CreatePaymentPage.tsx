@@ -12,7 +12,7 @@ const MAX_AMOUNT = 10_000_000;
 
 export default function CreatePaymentPage() {
   const navigate = useNavigate();
-  const { isConfigured, createTransaction } = useApp();
+  const { config, isConfigured, createTransaction } = useApp();
 
   const [amountStr, setAmountStr] = useState("0");
   const [description, setDescription] = useState("");
@@ -22,6 +22,7 @@ export default function CreatePaymentPage() {
   const amount = Number(amountStr) || 0;
   const tooLow = amount < MIN_AMOUNT;
   const tooHigh = amount > MAX_AMOUNT;
+  const blocked = config.merchantStatus !== "verified" || !isConfigured;
 
   const handleKey = (key: NumberPadKey) => {
     setAmountStr((prev) => {
@@ -80,6 +81,21 @@ export default function CreatePaymentPage() {
   return (
     <div className="payment-screen">
       <Header back title="Terima Pembayaran" subtitle="Buat QRIS sesuai nominal" />
+      {blocked ? (
+        <section className="card my-auto p-6 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-50 text-primary">
+            <Icon name="badge-check" size={24} />
+          </div>
+          <h2 className="text-xl font-extrabold">Merchant belum terverifikasi</h2>
+          <p className="mt-2 text-sm text-ink-muted">
+            Lengkapi data merchant dan tunggu verifikasi admin sebelum membuat QRIS.
+          </p>
+          <button type="button" onClick={() => navigate("/pengaturan")} className="btn-primary mt-5 w-full">
+            Lengkapi Data Merchant
+          </button>
+        </section>
+      ) : (
+        <>
 
       {/* Amount display */}
       <section className="payment-amount-block">
@@ -171,6 +187,8 @@ export default function CreatePaymentPage() {
           )}
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }

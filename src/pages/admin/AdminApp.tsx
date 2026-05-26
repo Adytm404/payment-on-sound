@@ -5,6 +5,7 @@ import { useAuth } from "@/store/AuthContext";
 const links = [
   { to: "/admin", label: "Dashboard", icon: "layout-dashboard" },
   { to: "/admin/users", label: "Merchant", icon: "users" },
+  { to: "/admin/merchants", label: "Verifikasi", icon: "badge-check" },
   { to: "/admin/plans", label: "Plan", icon: "badge-dollar-sign" },
   { to: "/admin/promos", label: "Promo", icon: "ticket-percent" },
   { to: "/admin/settings", label: "Setting", icon: "settings" },

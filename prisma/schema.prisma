@@ -133,6 +133,29 @@ model UserSettings {
   id             BigInt   @id @default(autoincrement())
   userId         BigInt   @unique @map("user_id")
   merchantName   String   @default("Merchant") @map("merchant_name") @db.VarChar(100)
+  merchantStatus MerchantStatus @default(draft) @map("merchant_status")
+  legalName      String?  @map("legal_name") @db.VarChar(100)
+  ktpNumber      String?  @map("ktp_number") @db.VarChar(32)
+  withdrawBankCode String? @map("withdraw_bank_code") @db.VarChar(50)
+  withdrawBankName String? @map("withdraw_bank_name") @db.VarChar(100)
+  withdrawAccountNumber String? @map("withdraw_account_number") @db.VarChar(64)
+  withdrawAccountName String? @map("withdraw_account_name") @db.VarChar(100)
+  merchantNameValid Boolean @default(false) @map("merchant_name_valid")
+  legalNameValid Boolean @default(false) @map("legal_name_valid")
+  ktpNumberValid Boolean @default(false) @map("ktp_number_valid")
+  withdrawBankValid Boolean @default(false) @map("withdraw_bank_valid")
+  withdrawAccountNumberValid Boolean @default(false) @map("withdraw_account_number_valid")
+  withdrawAccountNameValid Boolean @default(false) @map("withdraw_account_name_valid")
+  merchantNameNote String? @map("merchant_name_note") @db.Text
+  legalNameNote String? @map("legal_name_note") @db.Text
+  ktpNumberNote String? @map("ktp_number_note") @db.Text
+  withdrawBankNote String? @map("withdraw_bank_note") @db.Text
+  withdrawAccountNumberNote String? @map("withdraw_account_number_note") @db.Text
+  withdrawAccountNameNote String? @map("withdraw_account_name_note") @db.Text
+  verificationNote String? @map("verification_note") @db.Text
+  submittedAt DateTime? @map("submitted_at")
+  verifiedAt DateTime? @map("verified_at")
+  verifiedByAdminId BigInt? @map("verified_by_admin_id")
   pakasirProject String   @default("") @map("pakasir_project") @db.VarChar(100)
   pakasirApiKey  String   @map("pakasir_api_key") @db.Text
   sandbox        Boolean  @default(true)
@@ -146,6 +169,14 @@ model UserSettings {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
+}
+
+enum MerchantStatus {
+  draft
+  pending_review
+  needs_revision
+  verified
+  rejected
 }
 
 model Transaction {

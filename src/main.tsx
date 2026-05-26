@@ -26,6 +26,8 @@ import AdminReportsPage from "./pages/admin/AdminReportsPage";
 import AdminPlansPage from "./pages/admin/AdminPlansPage";
 import AdminPromosPage from "./pages/admin/AdminPromosPage";
 import AdminPlatformSettingsPage from "./pages/admin/AdminPlatformSettingsPage";
+import AdminMerchantsPage from "./pages/admin/AdminMerchantsPage";
+import AdminMerchantDetailPage from "./pages/admin/AdminMerchantDetailPage";
 
 import "./index.css";
 
@@ -43,6 +45,8 @@ createRoot(document.getElementById("root")!).render(
             <Route path="admin" element={<AdminApp />}>
               <Route index element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              <Route path="merchants" element={<AdminMerchantsPage />} />
+              <Route path="merchants/:userId" element={<AdminMerchantDetailPage />} />
               <Route path="plans" element={<AdminPlansPage />} />
               <Route path="promos" element={<AdminPromosPage />} />
               <Route path="settings" element={<AdminPlatformSettingsPage />} />
