@@ -566,5 +566,5 @@ export const INDONESIAN_BANKS = [
 ] as const;
 
 export function bankNameByCode(code: string) {
-  return INDONESIAN_BANKS.find((bank) => bank.code === code)?.name ?? " ;
+  return INDONESIAN_BANKS.find((bank) => bank.code === code)?.name ?? "";
 }
