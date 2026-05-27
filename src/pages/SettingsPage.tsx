@@ -24,7 +24,7 @@ function formatPlanDate(value: string | null) {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { config, saveConfig, refresh } = useApp();
+  const { config, saveConfig, refresh, refreshSettings } = useApp();
   const { logout } = useAuth();
 
   const [merchantName, setMerchantName] = useState(config.merchantName);
@@ -140,6 +140,7 @@ export default function SettingsPage() {
       ttsVolume,
     });
     const next = await api.submitMerchantVerification();
+    await refreshSettings();
     showToast("Data merchant dikirim untuk verifikasi", "success");
     setMerchantName(next.merchantName);
   };
