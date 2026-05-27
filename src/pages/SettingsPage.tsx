@@ -50,6 +50,14 @@ export default function SettingsPage() {
   );
   const displayedVoices = indonesianVoices.length > 0 ? indonesianVoices : voices;
   const canEditMerchant = config.merchantStatus === "draft" || config.merchantStatus === "needs_revision";
+  const merchantFieldsComplete = Boolean(
+    merchantName.trim() &&
+      legalName.trim() &&
+      ktpNumber.trim() &&
+      withdrawBankCode &&
+      withdrawAccountNumber.trim() &&
+      withdrawAccountName.trim(),
+  );
   const showChecklist = config.merchantStatus === "pending_review" || config.merchantStatus === "needs_revision";
   const checklist = [
     ["Nama merchant", config.merchantNameValid, config.merchantNameNote],
@@ -286,9 +294,9 @@ export default function SettingsPage() {
           </div>
 
           <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Bank Penarikan</label><select className="input" value={withdrawBankCode} onChange={(e) => setWithdrawBankCode(e.target.value)} disabled={!canEditMerchant}><option value="">Pilih bank</option>{INDONESIAN_BANKS.map((bank) => <option key={`${bank.code}-${bank.name}`} value={bank.code}>{bank.name} ({bank.code})</option>)}</select>{config.withdrawBankNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawBankNote}</p> : null}</div>
-          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nomor Rekening Penarikan</label><input className="input" inputMode="numeric" value={withdrawAccountNumber} onChange={(e) => setWithdrawAccountNumber(e.target.value)} placeholder="Nomor rekening" disabled={!canEditMerchant} />{config.withdrawAccountNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNumberNote}</p> : null}</div>
+          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nomor Rekening Penarikan</label><input className="input" inputMode="numeric" value={withdrawAccountNumber} onChange={(e) => setWithdrawAccountNumber(e.target.value)} placeholder="Nomor rekening" disabled={!canEditMerchant} /><p className="mt-1 text-[11px] font-semibold text-ink-muted">Pastikan nama pemilik rekening sesuai dengan nama pada KTP.</p>{config.withdrawAccountNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNumberNote}</p> : null}</div>
           <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nama Rekening Penarikan</label><input className="input" value={withdrawAccountName} onChange={(e) => setWithdrawAccountName(e.target.value)} placeholder="Nama pemilik rekening" disabled={!canEditMerchant} />{config.withdrawAccountNameNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNameNote}</p> : null}</div>
-          {canEditMerchant ? <button type="button" onClick={handleSubmitVerification} className="btn-primary w-full">Kirim Untuk Verifikasi</button> : null}
+          {canEditMerchant ? <button type="button" onClick={handleSubmitVerification} disabled={!merchantFieldsComplete} className="btn-primary w-full disabled:opacity-50">Kirim Untuk Verifikasi</button> : null}
         </div>
       </section>
 
