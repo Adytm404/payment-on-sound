@@ -272,7 +272,7 @@ export default function SettingsPage() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3">
+        {config.merchantStatus !== "verified" ? <div className="flex flex-col gap-3">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-ink-muted">
               Nama Merchant
@@ -314,7 +314,7 @@ export default function SettingsPage() {
           <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nomor Rekening Penarikan</label><input className="input" inputMode="numeric" value={withdrawAccountNumber} onChange={(e) => setWithdrawAccountNumber(e.target.value)} placeholder="Nomor rekening" disabled={!canEditMerchant} /><p className="mt-1 text-[11px] font-semibold text-ink-muted">Pastikan nama pemilik rekening sesuai dengan nama pada KTP.</p>{config.withdrawAccountNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNumberNote}</p> : null}</div>
           <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nama Rekening Penarikan</label><input className="input" value={withdrawAccountName} onChange={(e) => setWithdrawAccountName(e.target.value)} placeholder="Nama pemilik rekening" disabled={!canEditMerchant} />{config.withdrawAccountNameNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNameNote}</p> : null}</div>
           {canEditMerchant ? <button type="button" onClick={handleSubmitVerification} disabled={!merchantFieldsComplete} className="btn-primary w-full disabled:opacity-50">Kirim Untuk Verifikasi</button> : null}
-        </div>
+        </div> : null}
       </section>
 
       {/* Voice config */}
