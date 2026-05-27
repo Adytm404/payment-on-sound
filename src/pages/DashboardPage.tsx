@@ -9,6 +9,8 @@ export default function DashboardPage() {
   const { transactions, config, isConfigured, dashboardSummary } = useApp();
 
   const recent = transactions.slice(0, 20);
+  const merchantReady = config.merchantStatus === "verified" && isConfigured;
+  const merchantVerified = config.merchantStatus === "verified";
 
   return (
     <div className="screen gap-5">
@@ -99,11 +101,11 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {!isConfigured ? (
+        {!merchantReady ? (
           <EmptyState
-            icon="settings"
-            title="Konfigurasi Pakasir dulu"
-            description="Masukkan slug proyek dan API key untuk mulai menerima pembayaran QRIS."
+            icon={merchantVerified ? "loader-circle" : "badge-check"}
+            title={merchantVerified ? "Integrasi pembayaran diproses" : "Lengkapi data merchant"}
+            description={merchantVerified ? "Admin sedang mengaktifkan integrasi pembayaran merchant kamu." : "Kirim data merchant dan tunggu verifikasi admin sebelum menerima pembayaran QRIS."}
             action={
               <Link to="/pengaturan" className="inline-flex items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-3 text-sm font-extrabold text-white shadow-card transition active:scale-[0.98]">
                 <Icon name="arrow-right" size={16} />

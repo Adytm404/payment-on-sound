@@ -49,6 +49,16 @@ export default function SettingsPage() {
     voice.lang.toLowerCase().startsWith("id"),
   );
   const displayedVoices = indonesianVoices.length > 0 ? indonesianVoices : voices;
+  const canEditMerchant = config.merchantStatus === "draft" || config.merchantStatus === "needs_revision";
+  const showChecklist = config.merchantStatus === "pending_review" || config.merchantStatus === "needs_revision";
+  const checklist = [
+    ["Nama merchant", config.merchantNameValid, config.merchantNameNote],
+    ["Nama KTP", config.legalNameValid, config.legalNameNote],
+    ["Nomor KTP", config.ktpNumberValid, config.ktpNumberNote],
+    ["Bank penarikan", config.withdrawBankValid, config.withdrawBankNote],
+    ["Nomor rekening", config.withdrawAccountNumberValid, config.withdrawAccountNumberNote],
+    ["Nama rekening", config.withdrawAccountNameValid, config.withdrawAccountNameNote],
+  ] as const;
 
   useEffect(() => {
     api.currentPlan()
@@ -202,6 +212,41 @@ export default function SettingsPage() {
           {config.verificationNote ? <p className="mt-1 text-rose-600">Catatan admin: {config.verificationNote}</p> : null}
         </div>
 
+        {config.merchantStatus === "verified" ? (
+          <div className="mb-4 rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-4 text-sm">
+            <div className="flex items-start gap-3">
+              <Icon name="check-circle-2" size={20} className="mt-0.5 text-emerald-600" />
+              <div>
+                <p className="font-extrabold text-emerald-800">Pendaftaran merchant berhasil</p>
+                <p className="mt-1 text-xs font-semibold text-emerald-700">
+                  Merchant kamu sudah terverifikasi dan siap menerima pembayaran QRIS.
+                </p>
+                <p className="mt-2 text-xs text-emerald-700">
+                  Integrasi pembayaran: {config.project && config.apiKey ? "Aktif" : "Sedang dikonfigurasi admin"}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : showChecklist ? (
+          <div className="mb-4 rounded-[1.5rem] border border-white/70 bg-white/70 p-4">
+            <p className="text-sm font-extrabold text-ink">Checklist verifikasi</p>
+            <div className="mt-3 grid gap-2">
+              {checklist.map(([label, valid, note]) => (
+                <div key={label} className="flex items-start gap-2 rounded-2xl bg-surface-alt px-3 py-2 text-xs font-semibold">
+                  <Icon name={valid ? "check-circle-2" : "circle"} size={15} className={valid ? "mt-0.5 text-emerald-600" : "mt-0.5 text-ink-soft"} />
+                  <div>
+                    <p className={valid ? "text-emerald-700" : "text-ink-muted"}>{label}</p>
+                    {note ? <p className="mt-0.5 text-rose-600">{note}</p> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-ink-muted">
+              Data hanya bisa diubah jika admin meminta perbaikan/submission ulang.
+            </p>
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-3">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-ink-muted">
@@ -212,6 +257,7 @@ export default function SettingsPage() {
               value={merchantName}
               onChange={(e) => setMerchantName(e.target.value)}
               placeholder="Toko Saya"
+              disabled={!canEditMerchant}
               className="input"
             />
           </div>
@@ -225,6 +271,7 @@ export default function SettingsPage() {
               value={legalName}
               onChange={(e) => setLegalName(e.target.value)}
               placeholder="Nama lengkap sesuai KTP"
+              disabled={!canEditMerchant}
               className="input"
             />
             {config.legalNameNote ? <p className="mt-1 text-xs text-rose-600">{config.legalNameNote}</p> : null}
@@ -234,14 +281,14 @@ export default function SettingsPage() {
             <label className="mb-1.5 block text-xs font-medium text-ink-muted">
               Nomor KTP
             </label>
-            <input type="text" inputMode="numeric" value={ktpNumber} onChange={(e) => setKtpNumber(e.target.value)} placeholder="16 digit nomor KTP" className="input" />
+            <input type="text" inputMode="numeric" value={ktpNumber} onChange={(e) => setKtpNumber(e.target.value)} placeholder="16 digit nomor KTP" disabled={!canEditMerchant} className="input" />
             {config.ktpNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.ktpNumberNote}</p> : null}
           </div>
 
-          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Bank Penarikan</label><select className="input" value={withdrawBankCode} onChange={(e) => setWithdrawBankCode(e.target.value)}><option value="">Pilih bank</option>{INDONESIAN_BANKS.map((bank) => <option key={`${bank.code}-${bank.name}`} value={bank.code}>{bank.name} ({bank.code})</option>)}</select>{config.withdrawBankNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawBankNote}</p> : null}</div>
-          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nomor Rekening Penarikan</label><input className="input" inputMode="numeric" value={withdrawAccountNumber} onChange={(e) => setWithdrawAccountNumber(e.target.value)} placeholder="Nomor rekening" />{config.withdrawAccountNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNumberNote}</p> : null}</div>
-          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nama Rekening Penarikan</label><input className="input" value={withdrawAccountName} onChange={(e) => setWithdrawAccountName(e.target.value)} placeholder="Nama pemilik rekening" />{config.withdrawAccountNameNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNameNote}</p> : null}</div>
-          <button type="button" onClick={handleSubmitVerification} className="btn-primary w-full">Kirim Untuk Verifikasi</button>
+          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Bank Penarikan</label><select className="input" value={withdrawBankCode} onChange={(e) => setWithdrawBankCode(e.target.value)} disabled={!canEditMerchant}><option value="">Pilih bank</option>{INDONESIAN_BANKS.map((bank) => <option key={`${bank.code}-${bank.name}`} value={bank.code}>{bank.name} ({bank.code})</option>)}</select>{config.withdrawBankNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawBankNote}</p> : null}</div>
+          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nomor Rekening Penarikan</label><input className="input" inputMode="numeric" value={withdrawAccountNumber} onChange={(e) => setWithdrawAccountNumber(e.target.value)} placeholder="Nomor rekening" disabled={!canEditMerchant} />{config.withdrawAccountNumberNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNumberNote}</p> : null}</div>
+          <div><label className="mb-1.5 block text-xs font-medium text-ink-muted">Nama Rekening Penarikan</label><input className="input" value={withdrawAccountName} onChange={(e) => setWithdrawAccountName(e.target.value)} placeholder="Nama pemilik rekening" disabled={!canEditMerchant} />{config.withdrawAccountNameNote ? <p className="mt-1 text-xs text-rose-600">{config.withdrawAccountNameNote}</p> : null}</div>
+          {canEditMerchant ? <button type="button" onClick={handleSubmitVerification} className="btn-primary w-full">Kirim Untuk Verifikasi</button> : null}
         </div>
       </section>
 

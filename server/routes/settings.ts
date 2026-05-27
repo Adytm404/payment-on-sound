@@ -81,6 +81,7 @@ router.put("/", requireActiveUser, async (req, res) => {
 
   const userId = BigInt(req.auth!.userId);
   const current = await prisma.userSettings.findUnique({ where: { userId } });
+  const canEditMerchant = !current || current.merchantStatus === "draft" || current.merchantStatus === "needs_revision";
   const bankCode = parsed.data.withdrawBankCode?.trim() || null;
   const bankName = bankCode ? bankNameByCode(bankCode) : "";
   const nextStatus = current?.merchantStatus === "verified" ? "verified" : current?.merchantStatus === "pending_review" ? "pending_review" : "draft";
@@ -106,14 +107,16 @@ router.put("/", requireActiveUser, async (req, res) => {
       ttsVolume: parsed.data.ttsVolume,
     },
     update: {
-      merchantName: parsed.data.merchantName,
-      merchantStatus: nextStatus,
-      legalName: parsed.data.legalName?.trim() || null,
-      ktpNumber: parsed.data.ktpNumber?.trim() || null,
-      withdrawBankCode: bankCode,
-      withdrawBankName: bankName,
-      withdrawAccountNumber: parsed.data.withdrawAccountNumber?.trim() || null,
-      withdrawAccountName: parsed.data.withdrawAccountName?.trim() || null,
+      ...(canEditMerchant ? {
+        merchantName: parsed.data.merchantName,
+        merchantStatus: nextStatus,
+        legalName: parsed.data.legalName?.trim() || null,
+        ktpNumber: parsed.data.ktpNumber?.trim() || null,
+        withdrawBankCode: bankCode,
+        withdrawBankName: bankName,
+        withdrawAccountNumber: parsed.data.withdrawAccountNumber?.trim() || null,
+        withdrawAccountName: parsed.data.withdrawAccountName?.trim() || null,
+      } : {}),
       ttsEnabled: parsed.data.ttsEnabled,
       ttsVoiceURI: parsed.data.ttsVoiceURI,
       ttsRate: parsed.data.ttsRate,
@@ -135,6 +138,10 @@ router.post("/submit-verification", requireActiveUser, async (req, res) => {
   }
   if (!settings.merchantName || !settings.legalName || !settings.ktpNumber || !settings.withdrawBankCode || !settings.withdrawAccountNumber || !settings.withdrawAccountName) {
     res.status(422).json({ message: "Lengkapi semua data merchant sebelum submit verifikasi" });
+    return;
+  }
+  if (settings.merchantStatus !== "draft" && settings.merchantStatus !== "needs_revision") {
+    res.status(400).json({ message: "Data merchant sedang diproses admin dan belum bisa disubmit ulang" });
     return;
   }
   const updated = await prisma.userSettings.update({
