@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { requireAdmin } from "../middleware/admin";
 import { toJson } from "../utils/json";
+import { broadcastToUser } from "../realtime";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -246,6 +247,7 @@ router.put("/merchants/:userId/review", async (req, res) => {
     where: { userId: BigInt(req.params.userId) },
     data: { ...parsed.data, pakasirApiKey: apiKey, pakasirProject: parsed.data.pakasirProject.trim() },
   });
+  broadcastToUser(merchant.userId, "settings:updated", { type: "settings:updated" });
   res.json({ merchant: toJson(merchant) });
 });
 
@@ -254,6 +256,7 @@ router.post("/merchants/:userId/request-revision", async (req, res) => {
     where: { userId: BigInt(req.params.userId) },
     data: { merchantStatus: "needs_revision", verificationNote: String(req.body.verificationNote ?? "") },
   });
+  broadcastToUser(merchant.userId, "settings:updated", { type: "settings:updated" });
   res.json({ merchant: toJson(merchant) });
 });
 
@@ -262,6 +265,7 @@ router.post("/merchants/:userId/reject", async (req, res) => {
     where: { userId: BigInt(req.params.userId) },
     data: { merchantStatus: "rejected", verificationNote: String(req.body.verificationNote ?? "") },
   });
+  broadcastToUser(merchant.userId, "settings:updated", { type: "settings:updated" });
   res.json({ merchant: toJson(merchant) });
 });
 
@@ -278,6 +282,7 @@ router.post("/merchants/:userId/approve", async (req, res) => {
     return;
   }
   const updated = await prisma.userSettings.update({ where: { userId }, data: { merchantStatus: "verified", verifiedAt: new Date(), verifiedByAdminId: BigInt(req.auth!.userId) } });
+  broadcastToUser(userId, "settings:updated", { type: "settings:updated" });
   res.json({ merchant: toJson(updated) });
 });
 

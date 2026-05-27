@@ -77,6 +77,22 @@ export default function SettingsPage() {
       .catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    setMerchantName(config.merchantName);
+    setLegalName(config.legalName);
+    setKtpNumber(config.ktpNumber);
+    setWithdrawBankCode(config.withdrawBankCode);
+    setWithdrawAccountNumber(config.withdrawAccountNumber);
+    setWithdrawAccountName(config.withdrawAccountName);
+  }, [
+    config.merchantName,
+    config.legalName,
+    config.ktpNumber,
+    config.withdrawBankCode,
+    config.withdrawAccountNumber,
+    config.withdrawAccountName,
+  ]);
+
   const dirty =
     merchantName !== config.merchantName ||
     legalName !== config.legalName ||

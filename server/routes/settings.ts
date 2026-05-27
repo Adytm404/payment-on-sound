@@ -148,6 +148,7 @@ router.post("/submit-verification", requireActiveUser, async (req, res) => {
     where: { userId },
     data: { merchantStatus: "pending_review", submittedAt: new Date() },
   });
+  broadcastToUser(userId, "settings:updated", { type: "settings:updated" });
   res.json({ settings: shape(updated) });
 });
 
