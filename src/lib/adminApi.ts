@@ -140,7 +140,7 @@ export const adminApi = {
     }>("/admin/dashboard");
   },
 
-  users(params: { page?: number; search?: string; role?: string } = {}) {
+  users(params: { page?: number; search?: string; role?: string; limit?: number } = {}) {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== "") qs.set(k, String(v));
@@ -163,7 +163,7 @@ export const adminApi = {
     });
   },
 
-  transactions(params: { page?: number; search?: string; status?: string } = {}) {
+  transactions(params: { page?: number; search?: string; status?: string; limit?: number } = {}) {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== "") qs.set(k, String(v));
@@ -175,7 +175,7 @@ export const adminApi = {
     }>(`/admin/transactions?${qs}`);
   },
 
-  withdrawals(params: { page?: number; search?: string; status?: string } = {}) {
+  withdrawals(params: { page?: number; search?: string; status?: string; limit?: number } = {}) {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== "") qs.set(k, String(v));
@@ -233,8 +233,11 @@ export const adminApi = {
     return request<{ orders: any[] }>("/admin/plan-orders");
   },
 
-  merchants(status = "all") {
-    return request<{ data: AdminMerchant[] }>(`/admin/merchants?status=${encodeURIComponent(status)}`);
+  merchants(status = "all", search = "") {
+    const qs = new URLSearchParams();
+    if (status !== "all") qs.set("status", status);
+    if (search) qs.set("search", search);
+    return request<{ data: AdminMerchant[] }>(`/admin/merchants?${qs}`);
   },
 
   merchant(userId: string) {

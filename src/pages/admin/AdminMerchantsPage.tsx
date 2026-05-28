@@ -29,14 +29,18 @@ export default function AdminMerchantsPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    adminApi.merchants(status).then((res) => setRows(res.data));
-  }, [status]);
+    const handle = window.setTimeout(() => {
+      adminApi.merchants(status, search).then((res) => setRows(res.data));
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [status, search]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) => `${row.merchantName} ${row.user.email} ${row.withdrawBankName ?? ""} ${row.withdrawAccountNumber ?? ""}`.toLowerCase().includes(q));
-  }, [rows, search]);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      adminApi.merchants(status, search).then((res) => setRows(res.data)).catch(() => undefined);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [status, search]);
 
   const counts = useMemo(() => rows.reduce<Record<string, number>>((acc, row) => {
     acc[row.merchantStatus] = (acc[row.merchantStatus] ?? 0) + 1;
@@ -72,33 +76,35 @@ export default function AdminMerchantsPage() {
         <input className="input max-w-md bg-white text-ink" placeholder="Cari merchant, email, bank, rekening" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        {filtered.map((row) => {
-          const progress = validCount(row);
-          return (
-            <Link key={row.userId} to={`/admin/merchants/${row.userId}`} className="group rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 transition hover:-translate-y-0.5 hover:bg-white/[0.07]">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xl font-black text-white">{row.merchantName}</p>
-                  <p className="text-sm text-slate-500">{row.user.email}</p>
+      {rows.length === 0 ? (
+        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-8 text-center text-sm text-slate-400">Tidak ada merchant pada filter ini.</div>
+      ) : (
+        <section className="grid gap-4 xl:grid-cols-2">
+          {rows.map((row) => {
+            const progress = validCount(row);
+            return (
+              <Link key={row.userId} to={`/admin/merchants/${row.userId}`} className="group rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 transition hover:-translate-y-0.5 hover:bg-white/[0.07]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xl font-black text-white">{row.merchantName}</p>
+                    <p className="text-sm text-slate-500">{row.user.email}</p>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-black ${STATUS_TONE[row.merchantStatus]}`}>{STATUS_LABEL[row.merchantStatus]}</span>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-black ${STATUS_TONE[row.merchantStatus]}`}>{STATUS_LABEL[row.merchantStatus]}</span>
-              </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl bg-black/25 p-3"><p className="text-xs uppercase tracking-widest text-slate-500">Bank</p><p className="mt-1 font-bold">{row.withdrawBankName ?? "-"}</p></div>
-                <div className="rounded-2xl bg-black/25 p-3"><p className="text-xs uppercase tracking-widest text-slate-500">Rekening</p><p className="mt-1 font-bold">{row.withdrawAccountNumber ?? "-"}</p></div>
-                <div className="rounded-2xl bg-black/25 p-3"><p className="text-xs uppercase tracking-widest text-slate-500">Checklist</p><p className="mt-1 font-bold">{progress}/6 valid</p></div>
-              </div>
-              <div className="mt-4 flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span>Submit: {row.submittedAt ? new Date(row.submittedAt).toLocaleString("id-ID") : "Belum submit"}</span>
-                <span className="inline-flex items-center gap-1 text-red-300 group-hover:text-red-200">Review <Icon name="arrow-right" size={14} /></span>
-              </div>
-            </Link>
-          );
-        })}
-      </section>
-
-      {filtered.length === 0 ? <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-8 text-center text-sm text-slate-400">Tidak ada merchant pada filter ini.</div> : null}
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl bg-black/25 p-3"><p className="text-xs uppercase tracking-widest text-slate-500">Bank</p><p className="mt-1 font-bold">{row.withdrawBankName ?? "-"}</p></div>
+                  <div className="rounded-2xl bg-black/25 p-3"><p className="text-xs uppercase tracking-widest text-slate-500">Rekening</p><p className="mt-1 font-bold">{row.withdrawAccountNumber ?? "-"}</p></div>
+                  <div className="rounded-2xl bg-black/25 p-3"><p className="text-xs uppercase tracking-widest text-slate-500">Checklist</p><p className="mt-1 font-bold">{progress}/6 valid</p></div>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-xs font-semibold text-slate-500">
+                  <span>Submit: {row.submittedAt ? new Date(row.submittedAt).toLocaleString("id-ID") : "Belum submit"}</span>
+                  <span className="inline-flex items-center gap-1 text-red-300 group-hover:text-red-200">Review <Icon name="arrow-right" size={14} /></span>
+                </div>
+              </Link>
+            );
+          })}
+        </section>
+      )}
     </div>
   );
 }

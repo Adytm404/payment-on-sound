@@ -9,13 +9,26 @@ function formatExpiry(value?: string | null) {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("all");
+  const [page, setPage] = useState(1);
+
+  function load() {
+    adminApi.users({ search, role, page, limit: 25 }).then((res) => { setUsers(res.data); setPagination(res.pagination); });
+  }
+
+  useEffect(() => { setPage(1); }, [search, role]);
 
   useEffect(() => {
-    const handle = window.setTimeout(() => adminApi.users({ search, role }).then((res) => setUsers(res.data)), 250);
+    const handle = window.setTimeout(load, 250);
     return () => window.clearTimeout(handle);
-  }, [search, role]);
+  }, [search, role, page]);
+
+  useEffect(() => {
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, [search, role, page]);
 
   return (
     <div className="space-y-5 p-5 lg:p-8">
@@ -23,14 +36,25 @@ export default function AdminUsersPage() {
         <div><p className="text-xs uppercase tracking-[0.28em] text-red-300">User</p><h2 className="text-3xl font-black">Manajemen Merchant</h2></div>
         <div className="flex gap-3"><input className="input max-w-sm bg-white text-ink" placeholder="Cari nama/email" value={search} onChange={(e) => setSearch(e.target.value)} /><select className="input w-40 bg-white text-ink" value={role} onChange={(e) => setRole(e.target.value)}><option value="all">Semua</option><option value="merchant">Merchant</option><option value="admin">Admin</option></select></div>
       </div>
-      <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.04]">
-        <table className="w-full min-w-[980px] text-left text-sm">
-          <thead className="bg-white/[0.04] text-xs uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-4">User</th><th>Role</th><th>Plan</th><th>Expired</th><th>Status</th><th>Merchant</th><th>Transaksi</th><th>Note</th><th></th></tr></thead>
-          <tbody className="divide-y divide-white/10">
-            {users.map((user) => <tr key={user.id}><td className="px-5 py-4"><p className="font-black">{user.name}</p><p className="text-xs text-slate-500">{user.email}</p></td><td className="capitalize">{user.role}</td><td><span className={user.plan?.slug === "pro" ? "rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-black text-emerald-300" : "rounded-full bg-white/10 px-2.5 py-1 text-xs font-black text-slate-300"}>{user.plan?.name ?? "Free"}</span></td><td className="text-slate-400">{user.plan?.slug === "pro" ? formatExpiry(user.planExpiresAt) : "-"}</td><td><span className={user.isActive ? "text-emerald-300" : "text-red-300"}>{user.isActive ? "Aktif" : "Nonaktif"}</span></td><td>{user.settings?.merchantName ?? "-"}<p className="text-xs text-slate-500">{user.settings?.pakasirProject || "Pakasir belum lengkap"}</p></td><td>{user._count?.transactions ?? 0}</td><td className="max-w-[220px] truncate text-slate-400">{user.adminNote || "-"}</td><td><Link to={`/admin/users/${user.id}`} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold hover:bg-white/20">Detail</Link></td></tr>)}
-          </tbody>
-        </table>
-      </div>
+      {users.length === 0 ? (
+        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-8 text-center text-sm text-slate-400">Tidak ada user ditemukan.</div>
+      ) : (
+        <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.04]">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead className="bg-white/[0.04] text-xs uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-4">User</th><th>Role</th><th>Plan</th><th>Expired</th><th>Status</th><th>Merchant</th><th>Transaksi</th><th>Note</th><th></th></tr></thead>
+            <tbody className="divide-y divide-white/10">
+              {users.map((user) => <tr key={user.id}><td className="px-5 py-4"><p className="font-black">{user.name}</p><p className="text-xs text-slate-500">{user.email}</p></td><td className="capitalize">{user.role}</td><td><span className={user.plan?.slug === "pro" ? "rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-black text-emerald-300" : "rounded-full bg-white/10 px-2.5 py-1 text-xs font-black text-slate-300"}>{user.plan?.name ?? "Free"}</span></td><td className="text-slate-400">{user.plan?.slug === "pro" ? formatExpiry(user.planExpiresAt) : "-"}</td><td><span className={user.isActive ? "text-emerald-300" : "text-red-300"}>{user.isActive ? "Aktif" : "Nonaktif"}</span></td><td>{user.settings?.merchantName ?? "-"}<p className="text-xs text-slate-500">{user.settings?.pakasirProject || "Pakasir belum lengkap"}</p></td><td>{user._count?.transactions ?? 0}</td><td className="max-w-[220px] truncate text-slate-400">{user.adminNote || "-"}</td><td><Link to={`/admin/users/${user.id}`} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold hover:bg-white/20">Detail</Link></td></tr>)}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {pagination.totalPages > 1 ? (
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-slate-300 disabled:opacity-40">Prev</button>
+          <span className="text-xs font-bold text-slate-400">Halaman {page} / {pagination.totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))} disabled={page === pagination.totalPages} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-slate-300 disabled:opacity-40">Next</button>
+        </div>
+      ) : null}
     </div>
   );
 }

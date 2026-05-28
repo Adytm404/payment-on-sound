@@ -88,59 +88,62 @@ router.get("/dashboard", async (_req, res) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [
-    users,
-    proUsers,
-    transactions,
-    completed,
-    pending,
-    income,
-    fees,
-    todayIncome,
-    planRevenue,
-    pendingPlanOrders,
-    failedPlanOrders,
-    expiredPlanOrders,
-    pendingWithdrawals,
-    processingWithdrawals,
-    paidWithdrawals,
-    pendingVerifications,
-  ] = await Promise.all([
+  type TxRow = { total: bigint; completed: bigint; pending: bigint; income: bigint | null; fees: bigint | null; today_income: bigint | null };
+  type WdRow = { pending: bigint; processing: bigint; paid: bigint | null };
+  type PoRow = { revenue: bigint | null; pending: bigint; failed: bigint; expired: bigint };
+
+  const [users, proUsers, pendingVerifications, txRows, wdRows, poRows] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { plan: { slug: "pro" }, OR: [{ planExpiresAt: null }, { planExpiresAt: { gt: new Date() } }] } }),
-    prisma.transaction.count(),
-    prisma.transaction.count({ where: { status: "completed" } }),
-    prisma.transaction.count({ where: { status: "pending" } }),
-    prisma.transaction.aggregate({ where: { status: "completed" }, _sum: { amount: true } }),
-    prisma.transaction.aggregate({ where: { status: "completed" }, _sum: { fee: true } }),
-    prisma.transaction.aggregate({ where: { status: "completed", createdAt: { gte: today } }, _sum: { amount: true } }),
-    prisma.planOrder.aggregate({ where: { status: "paid" }, _sum: { finalAmount: true } }),
-    prisma.planOrder.count({ where: { status: "pending" } }),
-    prisma.planOrder.count({ where: { status: "failed" } }),
-    prisma.planOrder.count({ where: { status: "expired" } }),
-    prisma.withdrawalRequest.count({ where: { status: "pending" } }),
-    prisma.withdrawalRequest.count({ where: { status: "processing" } }),
-    prisma.withdrawalRequest.aggregate({ where: { status: "paid" }, _sum: { amount: true } }),
     prisma.userSettings.count({ where: { merchantStatus: "pending_review" } }),
+    prisma.$queryRaw<TxRow[]>`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as income,
+        SUM(CASE WHEN status = 'completed' THEN fee ELSE 0 END) as fees,
+        SUM(CASE WHEN status = 'completed' AND created_at >= ${today} THEN amount ELSE 0 END) as today_income
+      FROM transactions
+    `,
+    prisma.$queryRaw<WdRow[]>`
+      SELECT
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+        SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) as paid
+      FROM withdrawal_requests
+    `,
+    prisma.$queryRaw<PoRow[]>`
+      SELECT
+        SUM(CASE WHEN status = 'paid' THEN final_amount ELSE 0 END) as revenue,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+        SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired
+      FROM plan_orders
+    `,
   ]);
+
+  const tx = txRows[0];
+  const wd = wdRows[0];
+  const po = poRows[0];
 
   res.json(toJson({
     summary: {
       users,
       proUsers,
-      transactions,
-      completed,
-      pending,
-      income: income._sum.amount ?? 0,
-      fees: fees._sum.fee ?? 0,
-      todayIncome: todayIncome._sum.amount ?? 0,
-      planRevenue: planRevenue._sum.finalAmount ?? 0,
-      pendingPlanOrders,
-      failedPlanOrders,
-      expiredPlanOrders,
-      pendingWithdrawals,
-      processingWithdrawals,
-      paidWithdrawals: paidWithdrawals._sum.amount ?? 0,
+      transactions: Number(tx?.total ?? 0),
+      completed: Number(tx?.completed ?? 0),
+      pending: Number(tx?.pending ?? 0),
+      income: Number(tx?.income ?? 0),
+      fees: Number(tx?.fees ?? 0),
+      todayIncome: Number(tx?.today_income ?? 0),
+      planRevenue: Number(po?.revenue ?? 0),
+      pendingPlanOrders: Number(po?.pending ?? 0),
+      failedPlanOrders: Number(po?.failed ?? 0),
+      expiredPlanOrders: Number(po?.expired ?? 0),
+      pendingWithdrawals: Number(wd?.pending ?? 0),
+      processingWithdrawals: Number(wd?.processing ?? 0),
+      paidWithdrawals: Number(wd?.paid ?? 0),
       pendingVerifications,
     },
   }));
@@ -243,13 +246,23 @@ router.get("/promos", async (_req, res) => {
 
 router.get("/merchants", async (req, res) => {
   const status = String(req.query.status ?? "all");
+  const search = String(req.query.search ?? "").trim();
   const where: Prisma.UserSettingsWhereInput = {};
   if (["draft", "pending_review", "needs_revision", "verified", "rejected"].includes(status)) where.merchantStatus = status as any;
+  if (search) {
+    where.OR = [
+      { merchantName: { contains: search } },
+      { withdrawBankName: { contains: search } },
+      { withdrawAccountNumber: { contains: search } },
+      { user: { name: { contains: search } } },
+      { user: { email: { contains: search } } },
+    ];
+  }
   const merchants = await prisma.userSettings.findMany({
     where,
     orderBy: [{ submittedAt: "desc" }, { updatedAt: "desc" }],
     include: { user: { select: { id: true, name: true, email: true, isActive: true } } },
-    take: 100,
+    take: 200,
   });
   res.json({ data: toJson(merchants) });
 });
