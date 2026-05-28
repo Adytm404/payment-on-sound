@@ -14,6 +14,9 @@ model User {
   passwordHash String        @map("password_hash") @db.VarChar(255)
   role         UserRole      @default(merchant)
   isActive     Boolean       @default(true) @map("is_active")
+  emailVerified Boolean      @default(false) @map("email_verified")
+  emailVerificationToken String? @unique @map("email_verification_token") @db.VarChar(255)
+  emailVerificationExpiresAt DateTime? @map("email_verification_expires_at")
   adminNote    String?       @map("admin_note") @db.Text
   planId       BigInt?       @map("plan_id")
   planExpiresAt DateTime?    @map("plan_expires_at")
@@ -27,6 +30,7 @@ model User {
   plan         Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   @@index([planId], map: "idx_users_plan_id")
+  @@index([emailVerificationToken], map: "idx_users_email_verification_token")
   @@map("users")
 }
 

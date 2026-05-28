@@ -5,7 +5,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { signToken } from "../utils/token";
-import { sendEmail, buildResetPasswordEmail } from "../utils/email";
+import { sendEmail, buildResetPasswordEmail, buildVerificationEmail } from "../utils/email";
 
 const router = Router();
 
@@ -35,6 +35,7 @@ function publicUser(user: {
   email: string;
   role: "admin" | "merchant";
   isActive: boolean;
+  emailVerified: boolean;
   adminNote: string | null;
 }) {
   return {
@@ -43,8 +44,28 @@ function publicUser(user: {
     email: user.email,
     role: user.role,
     isActive: user.isActive,
+    emailVerified: user.emailVerified,
     adminNote: user.adminNote ?? "",
   };
+}
+
+async function sendVerificationEmail(userId: bigint, email: string) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerificationToken: token, emailVerificationExpiresAt: expiresAt },
+  });
+
+  const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
+  const verifyUrl = `${frontendOrigin}/verify-email?token=${token}`;
+
+  try {
+    await sendEmail(email, "Verifikasi Email Pasound", buildVerificationEmail(verifyUrl));
+  } catch (err) {
+    console.error("Failed to send verification email:", err);
+  }
 }
 
 router.post("/register", async (req, res) => {
@@ -79,6 +100,7 @@ router.post("/register", async (req, res) => {
     },
   });
   const token = signToken({ userId: user.id.toString(), email: user.email, role: user.role });
+  await sendVerificationEmail(user.id, user.email);
   res.status(201).json({ token, user: publicUser(user) });
 });
 
@@ -178,6 +200,58 @@ router.post("/reset-password", async (req, res) => {
     }),
   ]);
 
+  res.json({ ok: true });
+});
+
+router.get("/verify-email", async (req, res) => {
+  const token = String(req.query.token ?? "");
+  if (!token) {
+    res.status(400).json({ message: "Token tidak valid" });
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { emailVerificationToken: token },
+  });
+
+  if (!user || !user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+    res.status(400).json({ message: "Token tidak valid atau sudah kedaluwarsa" });
+    return;
+  }
+
+  if (user.emailVerified) {
+    res.json({ ok: true, message: "Email sudah terverifikasi" });
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpiresAt: null,
+    },
+  });
+
+  res.json({ ok: true, message: "Email berhasil diverifikasi" });
+});
+
+router.post("/resend-verification", requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: BigInt(req.auth!.userId) },
+  });
+
+  if (!user) {
+    res.status(404).json({ message: "User tidak ditemukan" });
+    return;
+  }
+
+  if (user.emailVerified) {
+    res.json({ ok: true, message: "Email sudah terverifikasi" });
+    return;
+  }
+
+  await sendVerificationEmail(user.id, user.email);
   res.json({ ok: true });
 });
 

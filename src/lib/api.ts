@@ -10,6 +10,7 @@ export type User = {
   email: string;
   role: "admin" | "merchant";
   isActive: boolean;
+  emailVerified: boolean;
   adminNote: string;
 };
 export type Plan = {
@@ -219,6 +220,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ token, password }),
     }, { auth: false });
+    return res;
+  },
+
+  async verifyEmail(token: string) {
+    const res = await request<{ ok: boolean; message: string }>(
+      `/auth/verify-email?token=${encodeURIComponent(token)}`,
+      {},
+      { auth: false },
+    );
+    return res;
+  },
+
+  async resendVerification() {
+    const res = await request<{ ok: boolean }>("/auth/resend-verification", {
+      method: "POST",
+    });
     return res;
   },
 

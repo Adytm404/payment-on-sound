@@ -19,6 +19,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import AuthPage from "./pages/AuthPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import PublicPaymentPage from "./pages/PublicPaymentPage";
 import AdminApp from "./pages/admin/AdminApp";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -44,6 +45,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="p/:orderId" element={<PublicPaymentPage />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
           <Route path="reset-password" element={<ResetPasswordPage />} />
+          <Route path="verify-email" element={<VerifyEmailPage />} />
           <Route element={<PublicOnlyRoute />}>
             <Route path="login" element={<AuthPage mode="login" />} />
             <Route path="register" element={<AuthPage mode="register" />} />

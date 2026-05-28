@@ -32,3 +32,16 @@ export function buildResetPasswordEmail(resetUrl: string) {
     </div>
   `;
 }
+
+export function buildVerificationEmail(verifyUrl: string) {
+  return `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #D71920; margin-bottom: 16px;">Verifikasi Email Pasound</h2>
+      <p>Selamat datang di Pasound! Silakan verifikasi email kamu untuk mulai menggunakan layanan kami.</p>
+      <p style="margin: 24px 0;">
+        <a href="${verifyUrl}" style="display: inline-block; background: #D71920; color: #fff; padding: 12px 32px; border-radius: 99px; text-decoration: none; font-weight: bold;">Verifikasi Email</a>
+      </p>
+      <p style="font-size: 13px; color: #888;">Link ini berlaku selama 24 jam. Jika kamu tidak mendaftar di Pasound, abaikan email ini.</p>
+    </div>
+  `;
+}

@@ -18,6 +18,9 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
     setLoading(true);
     try {
       const user = isRegister ? await register({ name, email, password }) : await login({ email, password });
+      if (isRegister) {
+        showToast("Akun berhasil dibuat! Silakan cek email untuk verifikasi.", "success");
+      }
       navigate(user.role === "admin" ? "/admin" : "/", { replace: true });
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Gagal autentikasi", "error");
