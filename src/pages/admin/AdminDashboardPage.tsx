@@ -40,6 +40,12 @@ export default function AdminDashboardPage() {
         <StatCard label="Upgrade Gagal" value={data.summary.failedPlanOrders} tone="red" />
         <StatCard label="Upgrade Expired" value={data.summary.expiredPlanOrders} />
       </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Penarikan Pending" value={data.summary.pendingWithdrawals} />
+        <StatCard label="Penarikan Processing" value={data.summary.processingWithdrawals} />
+        <StatCard label="Penarikan Paid" value={<Money value={data.summary.paidWithdrawals} />} tone="green" />
+      </section>
     </div>
   );
 }

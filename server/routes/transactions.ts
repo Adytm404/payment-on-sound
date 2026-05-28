@@ -9,6 +9,7 @@ import { cancelTransaction, createQris, simulatePayment, transactionDetail } fro
 import { toJson } from "../utils/json";
 import { broadcastToUser } from "../realtime";
 import { getUserPlan, monthStart, retentionStart } from "../utils/plans";
+import { getSettlementAt } from "../utils/settlement";
 
 const router = Router();
 router.use(requireAuth);
@@ -68,7 +69,7 @@ router.get("/", async (req, res) => {
   const where: Prisma.TransactionWhereInput = { userId };
   if (start) where.createdAt = { gte: start };
   if (retention) {
-    const current = where.createdAt && "gte" in where.createdAt ? where.createdAt.gte : null;
+    const current = typeof where.createdAt === "object" && where.createdAt && "gte" in where.createdAt ? where.createdAt.gte : null;
     where.createdAt = { gte: current && current > retention ? current : retention };
   }
   if (status !== "all" && statusValues.includes(status as TransactionStatus)) {
@@ -178,6 +179,61 @@ router.post("/", requireActiveUser, async (req, res) => {
   }
 });
 
+router.get("/export/csv", async (req, res) => {
+  const userId = BigInt(req.auth!.userId);
+  const period = String(req.query.period ?? "all");
+  const status = String(req.query.status ?? "all");
+  const start = dateStart(period);
+  const plan = await getUserPlan(userId);
+  const retention = retentionStart(plan?.reportRetentionDays);
+
+  const where: Prisma.TransactionWhereInput = { userId };
+  if (start) where.createdAt = { gte: start };
+  if (retention) {
+    const current = typeof where.createdAt === "object" && where.createdAt && "gte" in where.createdAt ? where.createdAt.gte : null;
+    where.createdAt = { gte: current && current > retention ? current : retention };
+  }
+  if (status !== "all" && statusValues.includes(status as TransactionStatus)) {
+    where.status = status as TransactionStatus;
+  }
+
+  const data = await prisma.transaction.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 10000,
+  });
+
+  const headers = [
+    "order_id",
+    "description",
+    "amount",
+    "fee",
+    "total_payment",
+    "status",
+    "created_at",
+    "completed_at",
+  ];
+  const rows = data.map((tx) =>
+    [
+      tx.orderId,
+      (tx.description ?? "").replace(/[",\n]/g, " "),
+      tx.amount,
+      tx.fee,
+      tx.totalPayment,
+      tx.status,
+      tx.createdAt.toISOString(),
+      tx.completedAt?.toISOString() ?? "",
+    ]
+      .map((v) => `"${String(v)}"`)
+      .join(","),
+  );
+  const csv = [headers.join(","), ...rows].join("\n");
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="pasound-laporan-${period}-${Date.now()}.csv"`);
+  res.send(csv);
+});
+
 router.get("/:orderId", async (req, res) => {
   const tx = await prisma.transaction.findFirst({
     where: { userId: BigInt(req.auth!.userId), orderId: req.params.orderId },
@@ -191,7 +247,8 @@ router.get("/:orderId", async (req, res) => {
 
 router.post("/:orderId/check", async (req, res) => {
   const userId = BigInt(req.auth!.userId);
-  const tx = await prisma.transaction.findFirst({ where: { userId, orderId: req.params.orderId } });
+  const orderId = String(req.params.orderId);
+  const tx = await prisma.transaction.findFirst({ where: { userId, orderId } });
   if (!tx) {
     res.status(404).json({ message: "Transaksi tidak ditemukan" });
     return;
@@ -200,11 +257,13 @@ router.post("/:orderId/check", async (req, res) => {
     const settings = await getSettings(userId);
     const detail = await transactionDetail({ config: settings, orderId: tx.orderId, amount: tx.amount });
     const statusChanged = tx.status !== detail.transaction.status;
+    const completedAt = detail.transaction.completed_at ? new Date(detail.transaction.completed_at) : tx.completedAt;
     const updated = await prisma.transaction.update({
       where: { id: tx.id },
       data: {
         status: detail.transaction.status,
-        completedAt: detail.transaction.completed_at ? new Date(detail.transaction.completed_at) : tx.completedAt,
+        completedAt,
+        settledAt: detail.transaction.status === "completed" && completedAt ? tx.settledAt ?? getSettlementAt(completedAt) : null,
       },
     });
     if (statusChanged) {
@@ -222,7 +281,8 @@ router.post("/:orderId/check", async (req, res) => {
 
 router.post("/:orderId/cancel", requireActiveUser, async (req, res) => {
   const userId = BigInt(req.auth!.userId);
-  const tx = await prisma.transaction.findFirst({ where: { userId, orderId: req.params.orderId } });
+  const orderId = String(req.params.orderId);
+  const tx = await prisma.transaction.findFirst({ where: { userId, orderId } });
   if (!tx) {
     res.status(404).json({ message: "Transaksi tidak ditemukan" });
     return;
@@ -244,7 +304,8 @@ router.post("/:orderId/cancel", requireActiveUser, async (req, res) => {
 
 router.post("/:orderId/simulate", requireActiveUser, async (req, res) => {
   const userId = BigInt(req.auth!.userId);
-  const tx = await prisma.transaction.findFirst({ where: { userId, orderId: req.params.orderId } });
+  const orderId = String(req.params.orderId);
+  const tx = await prisma.transaction.findFirst({ where: { userId, orderId } });
   if (!tx) {
     res.status(404).json({ message: "Transaksi tidak ditemukan" });
     return;

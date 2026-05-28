@@ -7,6 +7,8 @@ const TRANSACTION_EVENTS = [
   "transaction:created",
   "transaction:updated",
   "transactions:cleared",
+  "withdrawal:created",
+  "withdrawal:updated",
 ] as const;
 
 export function useRealtime() {
@@ -23,6 +25,7 @@ export function useRealtime() {
 
     const onTransaction = () => {
       window.dispatchEvent(new CustomEvent("pasound:transactions-changed"));
+      window.dispatchEvent(new CustomEvent("pasound:withdrawals-changed"));
       refresh();
     };
 

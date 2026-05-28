@@ -1,4 +1,4 @@
-import { getApiBase, getToken, type Pagination, type Plan } from "./api";
+import { getApiBase, getToken, type Pagination, type Plan, type Withdrawal, type WithdrawalSummary } from "./api";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
@@ -57,6 +57,15 @@ export type AdminPlanOrder = {
   user: { id: string; name: string; email: string };
   plan: { name: string; slug: string };
   promoCode: { code: string; name: string } | null;
+};
+
+export type AdminWithdrawal = Withdrawal & {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    settings?: { merchantName: string } | null;
+  };
 };
 
 export type AdminPlan = Plan & { _count?: { users: number } };
@@ -123,6 +132,9 @@ export const adminApi = {
         pendingPlanOrders: number;
         failedPlanOrders: number;
         expiredPlanOrders: number;
+        pendingWithdrawals: number;
+        processingWithdrawals: number;
+        paidWithdrawals: number;
       };
     }>("/admin/dashboard");
   },
@@ -160,6 +172,29 @@ export const adminApi = {
       pagination: Pagination;
       summary: { income: number; pending: number; failed: number; expired: number };
     }>(`/admin/transactions?${qs}`);
+  },
+
+  withdrawals(params: { page?: number; search?: string; status?: string } = {}) {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    return request<{
+      data: AdminWithdrawal[];
+      pagination: Pagination;
+      summary: { pending: number; processing: number; paid: number };
+    }>(`/admin/withdrawals?${qs}`);
+  },
+
+  withdrawal(requestId: string) {
+    return request<{ withdrawal: AdminWithdrawal; balance: WithdrawalSummary }>(`/admin/withdrawals/${requestId}`);
+  },
+
+  updateWithdrawal(requestId: string, action: "approve" | "processing" | "paid" | "reject" | "cancel", adminNote = "") {
+    return request<{ withdrawal: AdminWithdrawal }>(`/admin/withdrawals/${requestId}/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ adminNote }),
+    });
   },
 
   plans() {

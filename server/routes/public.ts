@@ -4,6 +4,7 @@ import { transactionDetail } from "../utils/pakasir";
 import { publicTransaction } from "../utils/transactionPresenter";
 import { broadcastToUser } from "../realtime";
 import { getUserPlan } from "../utils/plans";
+import { getSettlementAt } from "../utils/settlement";
 
 const router = Router();
 
@@ -19,7 +20,7 @@ async function findPublicTransaction(orderId: string) {
 }
 
 router.get("/transactions/:orderId", async (req, res) => {
-  const tx = await findPublicTransaction(req.params.orderId);
+  const tx = await findPublicTransaction(String(req.params.orderId));
   if (!tx) {
     res.status(404).json({ message: "Transaksi tidak ditemukan" });
     return;
@@ -33,7 +34,7 @@ router.get("/transactions/:orderId", async (req, res) => {
 });
 
 router.post("/transactions/:orderId/check", async (req, res) => {
-  const tx = await findPublicTransaction(req.params.orderId);
+  const tx = await findPublicTransaction(String(req.params.orderId));
   if (!tx) {
     res.status(404).json({ message: "Transaksi tidak ditemukan" });
     return;
@@ -61,13 +62,15 @@ router.post("/transactions/:orderId/check", async (req, res) => {
     });
 
     const statusChanged = tx.status !== detail.transaction.status;
+    const completedAt = detail.transaction.completed_at
+      ? new Date(detail.transaction.completed_at)
+      : tx.completedAt;
     const updated = await prisma.transaction.update({
       where: { id: tx.id },
       data: {
         status: detail.transaction.status,
-        completedAt: detail.transaction.completed_at
-          ? new Date(detail.transaction.completed_at)
-          : tx.completedAt,
+        completedAt,
+        settledAt: detail.transaction.status === "completed" && completedAt ? tx.settledAt ?? getSettlementAt(completedAt) : null,
       },
       include: {
         user: {

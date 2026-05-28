@@ -8,7 +8,7 @@ import { formatRupiah, formatDate } from "@/lib/format";
 import { showToast } from "@/components/Toast";
 import { classNames } from "@/lib/status";
 import type { TransactionStatus } from "@/lib/pakasir";
-import { api, type Pagination, type TransactionSummary } from "@/lib/api";
+import { api, getToken, getApiBase, type Pagination, type TransactionSummary } from "@/lib/api";
 import type { StoredTransaction } from "@/lib/storage";
 
 type Period = "today" | "week" | "month" | "all";
@@ -93,44 +93,33 @@ export default function ReportPage() {
     );
   }, [transactions]);
 
-  const handleExport = () => {
-    if (transactions.length === 0) {
-      showToast("Tidak ada data untuk diekspor", "info");
+  const handleExport = async () => {
+    const token = getToken();
+    if (!token) {
+      showToast("Sesi login habis, silakan masuk ulang", "error");
       return;
     }
-    const headers = [
-      "order_id",
-      "description",
-      "amount",
-      "fee",
-      "total_payment",
-      "status",
-      "created_at",
-      "completed_at",
-    ];
-    const rows = transactions.map((tx) =>
-      [
-        tx.orderId,
-        (tx.description ?? "").replace(/[",\n]/g, " "),
-        tx.amount,
-        tx.fee,
-        tx.totalPayment,
-        tx.status,
-        tx.createdAt,
-        tx.completedAt ?? "",
-      ]
-        .map((v) => `"${String(v)}"`)
-        .join(","),
-    );
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `pasound-laporan-${period}-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Laporan diunduh", "success");
+    const params = new URLSearchParams();
+    params.set("period", period);
+    params.set("status", statusFilter);
+    const url = `${getApiBase()}/transactions/export/csv?${params}`;
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        showToast("Gagal mengekspor laporan", "error");
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `pasound-laporan-${period}-${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+      showToast("Laporan diunduh", "success");
+    } catch {
+      showToast("Gagal mengekspor laporan", "error");
+    }
   };
 
   return (

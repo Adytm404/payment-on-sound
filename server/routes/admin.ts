@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
+import { Prisma, type WithdrawalStatus } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { requireAdmin } from "../middleware/admin";
 import { toJson } from "../utils/json";
 import { broadcastToUser } from "../realtime";
+import { getWithdrawalSummary } from "../utils/withdrawals";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -70,6 +71,12 @@ const merchantReviewSchema = z.object({
   verificationNote: z.string().max(1000).optional().nullable(),
 });
 
+const withdrawalNoteSchema = z.object({
+  adminNote: z.string().max(1000).optional().nullable(),
+});
+
+const withdrawalStatuses = ["pending", "approved", "processing", "paid", "rejected", "cancelled"] as const;
+
 function userWhere(search: string): Prisma.UserWhereInput {
   if (!search) return {};
   return {
@@ -94,6 +101,9 @@ router.get("/dashboard", async (_req, res) => {
     pendingPlanOrders,
     failedPlanOrders,
     expiredPlanOrders,
+    pendingWithdrawals,
+    processingWithdrawals,
+    paidWithdrawals,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { plan: { slug: "pro" }, OR: [{ planExpiresAt: null }, { planExpiresAt: { gt: new Date() } }] } }),
@@ -107,6 +117,9 @@ router.get("/dashboard", async (_req, res) => {
     prisma.planOrder.count({ where: { status: "pending" } }),
     prisma.planOrder.count({ where: { status: "failed" } }),
     prisma.planOrder.count({ where: { status: "expired" } }),
+    prisma.withdrawalRequest.count({ where: { status: "pending" } }),
+    prisma.withdrawalRequest.count({ where: { status: "processing" } }),
+    prisma.withdrawalRequest.aggregate({ where: { status: "paid" }, _sum: { amount: true } }),
   ]);
 
   res.json(toJson({
@@ -123,9 +136,24 @@ router.get("/dashboard", async (_req, res) => {
       pendingPlanOrders,
       failedPlanOrders,
       expiredPlanOrders,
+      pendingWithdrawals,
+      processingWithdrawals,
+      paidWithdrawals: paidWithdrawals._sum.amount ?? 0,
     },
   }));
 });
+
+function withdrawalUpdateData(status: WithdrawalStatus, adminNote?: string | null) {
+  const now = new Date();
+  return {
+    status,
+    adminNote: adminNote?.trim() || null,
+    ...(status === "approved" ? { approvedAt: now } : {}),
+    ...(status === "processing" ? { processedAt: now } : {}),
+    ...(status === "paid" ? { paidAt: now } : {}),
+    ...(status === "rejected" ? { rejectedAt: now } : {}),
+  };
+}
 
 router.get("/users", async (req, res) => {
   const page = Math.max(1, Number(req.query.page ?? 1));
@@ -329,6 +357,91 @@ router.get("/plan-orders", async (_req, res) => {
   });
   res.json({ orders: toJson(orders) });
 });
+
+router.get("/withdrawals", async (req, res) => {
+  const page = Math.max(1, Number(req.query.page ?? 1));
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
+  const status = String(req.query.status ?? "all");
+  const search = String(req.query.search ?? "").trim();
+  const where: Prisma.WithdrawalRequestWhereInput = {};
+  if (withdrawalStatuses.includes(status as any)) where.status = status as WithdrawalStatus;
+  if (search) {
+    const amount = Number(search.replace(/\D/g, ""));
+    where.OR = [
+      { requestId: { contains: search } },
+      { bankName: { contains: search } },
+      { accountName: { contains: search } },
+      { accountNumber: { contains: search } },
+      { user: { name: { contains: search } } },
+      { user: { email: { contains: search } } },
+      ...(Number.isFinite(amount) && amount > 0 ? [{ amount }] : []),
+    ];
+  }
+  const [total, data, pending, processing, paid] = await Promise.all([
+    prisma.withdrawalRequest.count({ where }),
+    prisma.withdrawalRequest.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: { user: { select: { id: true, name: true, email: true, settings: { select: { merchantName: true } } } } },
+    }),
+    prisma.withdrawalRequest.aggregate({ where: { ...where, status: "pending" }, _sum: { amount: true } }),
+    prisma.withdrawalRequest.aggregate({ where: { ...where, status: "processing" }, _sum: { amount: true } }),
+    prisma.withdrawalRequest.aggregate({ where: { ...where, status: "paid" }, _sum: { amount: true } }),
+  ]);
+  res.json(toJson({
+    data,
+    pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+    summary: { pending: pending._sum.amount ?? 0, processing: processing._sum.amount ?? 0, paid: paid._sum.amount ?? 0 },
+  }));
+});
+
+router.get("/withdrawals/:requestId", async (req, res) => {
+  const withdrawal = await prisma.withdrawalRequest.findUnique({
+    where: { requestId: req.params.requestId },
+    include: { user: { select: { id: true, name: true, email: true, settings: true } } },
+  });
+  if (!withdrawal) {
+    res.status(404).json({ message: "Request penarikan tidak ditemukan" });
+    return;
+  }
+  const balance = await getWithdrawalSummary(withdrawal.userId);
+  res.json({ withdrawal: toJson(withdrawal), balance: toJson(balance) });
+});
+
+async function updateWithdrawalStatus(req: any, res: any, status: WithdrawalStatus) {
+  const parsed = withdrawalNoteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(422).json({ message: "Data penarikan tidak valid" });
+    return;
+  }
+  if (status === "rejected" && !parsed.data.adminNote?.trim()) {
+    res.status(422).json({ message: "Catatan admin wajib diisi saat menolak penarikan" });
+    return;
+  }
+  const current = await prisma.withdrawalRequest.findUnique({ where: { requestId: req.params.requestId } });
+  if (!current) {
+    res.status(404).json({ message: "Request penarikan tidak ditemukan" });
+    return;
+  }
+  if (["paid", "rejected", "cancelled"].includes(current.status)) {
+    res.status(400).json({ message: "Status penarikan sudah final" });
+    return;
+  }
+  const withdrawal = await prisma.withdrawalRequest.update({
+    where: { id: current.id },
+    data: withdrawalUpdateData(status, parsed.data.adminNote),
+  });
+  broadcastToUser(withdrawal.userId, "withdrawal:updated", { type: "withdrawal:updated", requestId: withdrawal.requestId, status: withdrawal.status });
+  res.json({ withdrawal: toJson(withdrawal) });
+}
+
+router.post("/withdrawals/:requestId/approve", (req, res) => updateWithdrawalStatus(req, res, "approved"));
+router.post("/withdrawals/:requestId/processing", (req, res) => updateWithdrawalStatus(req, res, "processing"));
+router.post("/withdrawals/:requestId/paid", (req, res) => updateWithdrawalStatus(req, res, "paid"));
+router.post("/withdrawals/:requestId/reject", (req, res) => updateWithdrawalStatus(req, res, "rejected"));
+router.post("/withdrawals/:requestId/cancel", (req, res) => updateWithdrawalStatus(req, res, "cancelled"));
 
 router.get("/users/:userId", async (req, res) => {
   const userId = BigInt(req.params.userId);

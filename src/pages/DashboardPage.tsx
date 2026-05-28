@@ -67,6 +67,10 @@ export default function DashboardPage() {
           <Icon name="chart-line" size={16} />
           Laporan
         </Link>
+        <Link to="/penarikan" className="btn-secondary col-span-2 py-4 text-base">
+          <Icon name="wallet" size={16} />
+          Penarikan Dana
+        </Link>
       </section>
 
       {/* Weekly status */}

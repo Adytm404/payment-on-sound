@@ -11,6 +11,7 @@ import { publicRouter } from "./routes/public";
 import { adminRouter } from "./routes/admin";
 import { plansRouter } from "./routes/plans";
 import { duitkuRouter } from "./routes/duitku";
+import { withdrawalsRouter } from "./routes/withdrawals";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
@@ -26,6 +27,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/transactions", transactionsRouter);
+app.use("/api/withdrawals", withdrawalsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/realtime", realtimeRouter);
 app.use("/api/tts", ttsRouter);

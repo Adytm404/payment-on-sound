@@ -1,9 +1,11 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
+import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { signToken } from "../utils/token";
+import { sendEmail, buildResetPasswordEmail } from "../utils/email";
 
 const router = Router();
 
@@ -16,6 +18,15 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(6).max(100),
 });
 
 function publicUser(user: {
@@ -103,6 +114,71 @@ router.get("/me", requireAuth, async (req, res) => {
     return;
   }
   res.json({ user: publicUser(user) });
+});
+
+router.post("/forgot-password", async (req, res) => {
+  const parsed = forgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(422).json({ message: "Email tidak valid" });
+    return;
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  if (!user) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+  await prisma.passwordResetToken.create({
+    data: { userId: user.id, token, expiresAt },
+  });
+
+  const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
+  const resetUrl = `${frontendOrigin}/reset-password?token=${token}`;
+
+  try {
+    await sendEmail(user.email, "Reset Password Pasound", buildResetPasswordEmail(resetUrl));
+  } catch (err) {
+    console.error("Failed to send reset email:", err);
+  }
+
+  res.json({ ok: true });
+});
+
+router.post("/reset-password", async (req, res) => {
+  const parsed = resetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(422).json({ message: "Data reset password tidak valid" });
+    return;
+  }
+
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { token: parsed.data.token },
+    include: { user: true },
+  });
+
+  if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+    res.status(400).json({ message: "Token tidak valid atau sudah kedaluwarsa" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: resetToken.userId },
+      data: { passwordHash },
+    }),
+    prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { usedAt: new Date() },
+    }),
+  ]);
+
+  res.json({ ok: true });
 });
 
 export { router as authRouter };

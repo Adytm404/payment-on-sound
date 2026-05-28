@@ -14,8 +14,11 @@ import QRPaymentPage from "./pages/QRPaymentPage";
 import ReportPage from "./pages/ReportPage";
 import SettingsPage from "./pages/SettingsPage";
 import PlanManagementPage from "./pages/PlanManagementPage";
+import WithdrawalPage from "./pages/WithdrawalPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AuthPage from "./pages/AuthPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PublicPaymentPage from "./pages/PublicPaymentPage";
 import AdminApp from "./pages/admin/AdminApp";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -28,6 +31,8 @@ import AdminPromosPage from "./pages/admin/AdminPromosPage";
 import AdminPlatformSettingsPage from "./pages/admin/AdminPlatformSettingsPage";
 import AdminMerchantsPage from "./pages/admin/AdminMerchantsPage";
 import AdminMerchantDetailPage from "./pages/admin/AdminMerchantDetailPage";
+import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawalsPage";
+import AdminWithdrawalDetailPage from "./pages/admin/AdminWithdrawalDetailPage";
 
 import "./index.css";
 
@@ -37,6 +42,8 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <Routes>
           <Route path="p/:orderId" element={<PublicPaymentPage />} />
+          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="reset-password" element={<ResetPasswordPage />} />
           <Route element={<PublicOnlyRoute />}>
             <Route path="login" element={<AuthPage mode="login" />} />
             <Route path="register" element={<AuthPage mode="register" />} />
@@ -52,6 +59,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="settings" element={<AdminPlatformSettingsPage />} />
               <Route path="users/:userId" element={<AdminUserDetailPage />} />
               <Route path="transactions" element={<AdminTransactionsPage />} />
+              <Route path="withdrawals" element={<AdminWithdrawalsPage />} />
+              <Route path="withdrawals/:requestId" element={<AdminWithdrawalDetailPage />} />
               <Route path="reports" element={<AdminReportsPage />} />
             </Route>
           </Route>
@@ -67,6 +76,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="transaksi/baru" element={<CreatePaymentPage />} />
               <Route path="transaksi/:orderId" element={<QRPaymentPage />} />
               <Route path="laporan" element={<ReportPage />} />
+              <Route path="penarikan" element={<WithdrawalPage />} />
               <Route path="pengaturan" element={<SettingsPage />} />
               <Route path="pengaturan/plan" element={<PlanManagementPage />} />
               <Route path="*" element={<NotFoundPage />} />

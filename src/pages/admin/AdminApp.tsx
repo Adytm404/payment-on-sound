@@ -10,6 +10,7 @@ const links = [
   { to: "/admin/promos", label: "Promo", icon: "ticket-percent" },
   { to: "/admin/settings", label: "Setting", icon: "settings" },
   { to: "/admin/transactions", label: "Langganan", icon: "receipt-text" },
+  { to: "/admin/withdrawals", label: "Penarikan", icon: "wallet" },
   { to: "/admin/reports", label: "Laporan", icon: "bar-chart-3" },
 ];
 

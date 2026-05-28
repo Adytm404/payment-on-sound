@@ -3,6 +3,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { toJson } from "../utils/json";
 import { getUserPlan, retentionStart } from "../utils/plans";
+import { getWithdrawalSummary } from "../utils/withdrawals";
 
 const router = Router();
 router.use(requireAuth);
@@ -26,6 +27,7 @@ router.get("/", async (req, res) => {
     pendingAggregate,
     pendingCount,
     recentTransactions,
+    withdrawalSummary,
   ] = await Promise.all([
     prisma.transaction.aggregate({
       where: { userId, status: "completed", ...(retention ? { createdAt: { gte: retention } } : {}) },
@@ -49,6 +51,7 @@ router.get("/", async (req, res) => {
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    getWithdrawalSummary(userId),
   ]);
 
   res.json({
@@ -58,6 +61,7 @@ router.get("/", async (req, res) => {
       todayIncome: todayIncome._sum.amount ?? 0,
       pendingAmount: pendingAggregate._sum.amount ?? 0,
       pendingCount,
+      availableBalance: withdrawalSummary.availableBalance,
     },
     recentTransactions: toJson(recentTransactions),
   });

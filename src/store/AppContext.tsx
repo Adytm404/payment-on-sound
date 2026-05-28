@@ -52,6 +52,7 @@ const DEFAULT_DASHBOARD_SUMMARY: DashboardSummary = {
   todayIncome: 0,
   pendingAmount: 0,
   pendingCount: 0,
+  availableBalance: 0,
 };
 
 type AppContextValue = {

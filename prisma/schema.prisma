@@ -22,6 +22,8 @@ model User {
   settings     UserSettings?
   transactions Transaction[]
   planOrders   PlanOrder[]
+  withdrawalRequests WithdrawalRequest[]
+  passwordResetTokens PasswordResetToken[]
   plan         Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   @@index([planId], map: "idx_users_plan_id")
@@ -193,12 +195,14 @@ model Transaction {
   createdAt     DateTime          @default(now()) @map("created_at")
   expiredAt     DateTime          @map("expired_at")
   completedAt   DateTime?         @map("completed_at")
+  settledAt     DateTime?         @map("settled_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, orderId], map: "transactions_user_order_id_key")
   @@index([userId, orderId], map: "idx_user_order_id")
   @@index([userId, status, createdAt], map: "idx_user_status_created")
+  @@index([userId, status, settledAt], map: "idx_user_status_settled_at")
   @@index([userId, createdAt], map: "idx_user_created")
   @@index([userId, amount], map: "idx_user_amount")
   @@index([userId, totalPayment], map: "idx_user_total_payment")
@@ -211,4 +215,51 @@ enum TransactionStatus {
   cancelled
   expired
   failed
+}
+
+model WithdrawalRequest {
+  id            BigInt           @id @default(autoincrement())
+  userId        BigInt           @map("user_id")
+  requestId     String           @unique @map("request_id") @db.VarChar(64)
+  amount        Int
+  status        WithdrawalStatus @default(pending)
+  bankCode      String           @map("bank_code") @db.VarChar(50)
+  bankName      String           @map("bank_name") @db.VarChar(100)
+  accountNumber String           @map("account_number") @db.VarChar(64)
+  accountName   String           @map("account_name") @db.VarChar(100)
+  userNote      String?          @map("user_note") @db.Text
+  adminNote     String?          @map("admin_note") @db.Text
+  approvedAt    DateTime?        @map("approved_at")
+  processedAt   DateTime?        @map("processed_at")
+  paidAt        DateTime?        @map("paid_at")
+  rejectedAt    DateTime?        @map("rejected_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status], map: "idx_withdrawals_user_status")
+  @@index([status, createdAt], map: "idx_withdrawals_status_created")
+  @@map("withdrawal_requests")
+}
+
+enum WithdrawalStatus {
+  pending
+  approved
+  processing
+  paid
+  rejected
+  cancelled
+}
+
+model PasswordResetToken {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  token     String   @unique @db.VarChar(255)
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token], map: "idx_password_reset_token")
+  @@map("password_reset_tokens")
 }

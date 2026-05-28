@@ -51,6 +51,14 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
           </button>
         </form>
 
+        {mode === "login" ? (
+          <p className="text-center text-sm">
+            <Link to="/forgot-password" className="font-semibold text-ink-muted hover:text-[#D71920]">
+              Lupa password?
+            </Link>
+          </p>
+        ) : null}
+
         <p className="mt-5 text-center text-sm text-ink-muted">
           {isRegister ? "Sudah punya akun?" : "Belum punya akun?"} {" "}
           <Link to={isRegister ? "/login" : "/register"} className="font-extrabold text-[#D71920]">

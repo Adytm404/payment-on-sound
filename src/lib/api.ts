@@ -45,6 +45,40 @@ export type DashboardSummary = {
   todayIncome: number;
   pendingAmount: number;
   pendingCount: number;
+  availableBalance: number;
+};
+
+export type WithdrawalStatus = "pending" | "approved" | "processing" | "paid" | "rejected" | "cancelled";
+export type Withdrawal = {
+  requestId: string;
+  amount: number;
+  status: WithdrawalStatus;
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  userNote: string | null;
+  adminNote: string | null;
+  approvedAt: string | null;
+  processedAt: string | null;
+  paidAt: string | null;
+  rejectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+export type WithdrawalSummary = {
+  availableBalance: number;
+  settledIncome: number;
+  pendingSettlement: number;
+  nextSettlementAt: string | null;
+  completedIncome: number;
+  reservedWithdrawal: number;
+  paidWithdrawal: number;
+  minimumWithdrawal: number;
+  hasActiveRequest: boolean;
+  merchantStatus: string;
+  bank: { code: string; name: string; accountNumber: string; accountName: string };
+  activeRequest?: Withdrawal | null;
 };
 
 export function getToken() {
@@ -172,6 +206,22 @@ export const api = {
     return request<{ user: User }>("/auth/me");
   },
 
+  async forgotPassword(email: string) {
+    const res = await request<{ ok: boolean }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }, { auth: false });
+    return res;
+  },
+
+  async resetPassword(token: string, password: string) {
+    const res = await request<{ ok: boolean }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }, { auth: false });
+    return res;
+  },
+
   async getSettings() {
     const res = await request<{ settings: any }>("/settings");
     return mapConfig(res.settings);
@@ -219,6 +269,22 @@ export const api = {
       summary: TransactionSummary;
     }>(`/transactions?${qs}`);
     return { ...res, data: res.data.map(mapTx) };
+  },
+
+  getWithdrawalSummary() {
+    return request<{ summary: WithdrawalSummary }>("/withdrawals/summary");
+  },
+
+  listWithdrawals() {
+    return request<{ data: Withdrawal[] }>("/withdrawals");
+  },
+
+  createWithdrawal(input: { amount: number; userNote?: string }) {
+    return request<{ withdrawal: Withdrawal }>("/withdrawals", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  cancelWithdrawal(requestId: string) {
+    return request<{ withdrawal: Withdrawal }>(`/withdrawals/${requestId}/cancel`, { method: "POST" });
   },
 
   async getDashboard() {
