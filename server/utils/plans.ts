@@ -1,20 +1,44 @@
 import { prisma } from "../db";
+import type { Plan } from "@prisma/client";
+
+const planCache = new Map<string, { plan: Plan | null; expiresAt: number }>();
+const PLAN_CACHE_TTL = 60_000;
+
+export function invalidatePlanCache(userId: bigint | string) {
+  planCache.delete(userId.toString());
+}
 
 export async function getFreePlan() {
   return prisma.plan.findUnique({ where: { slug: "free" } });
 }
 
 export async function getUserPlan(userId: bigint) {
+  const key = userId.toString();
+  const cached = planCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.plan;
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { plan: true },
   });
-  if (!user) return null;
-  if (user.plan?.isActive && user.plan.slug === "pro" && user.planExpiresAt && user.planExpiresAt.getTime() < Date.now()) {
-    return getFreePlan();
+  if (!user) {
+    planCache.set(key, { plan: null, expiresAt: Date.now() + PLAN_CACHE_TTL });
+    return null;
   }
-  if (user.plan?.isActive) return user.plan;
-  return getFreePlan();
+
+  let plan: Plan | null;
+  if (user.plan?.isActive && user.plan.slug === "pro" && user.planExpiresAt && user.planExpiresAt.getTime() < Date.now()) {
+    plan = await getFreePlan();
+  } else if (user.plan?.isActive) {
+    plan = user.plan;
+  } else {
+    plan = await getFreePlan();
+  }
+
+  planCache.set(key, { plan, expiresAt: Date.now() + PLAN_CACHE_TTL });
+  return plan;
 }
 
 export function monthStart() {

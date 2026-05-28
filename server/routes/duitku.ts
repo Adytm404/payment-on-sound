@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db";
 import { verifyDuitkuCallback } from "../utils/duitkuPop";
+import { invalidatePlanCache } from "../utils/plans";
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.post("/plan-callback", async (req, res) => {
       if (order.promoCodeId) await tx.promoCode.update({ where: { id: order.promoCodeId }, data: { usedCount: { increment: 1 } } });
       await tx.user.update({ where: { id: order.userId }, data: { planId: order.planId, planExpiresAt: order.expiresAt } });
     });
+    invalidatePlanCache(order.userId.toString());
   } else if (resultCode === "01") {
     await prisma.planOrder.update({ where: { id: order.id }, data: { status: "failed", providerReference: reference || order.providerReference } });
   }

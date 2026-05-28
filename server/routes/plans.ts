@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { requireActiveUser } from "../middleware/admin";
-import { getUserPlan, publicPlan } from "../utils/plans";
+import { getUserPlan, publicPlan, invalidatePlanCache } from "../utils/plans";
 import { createDuitkuInvoice } from "../utils/duitkuPop";
 import { toJson } from "../utils/json";
 
@@ -35,6 +35,7 @@ router.put("/current", requireActiveUser, async (req, res) => {
     return;
   }
   await prisma.user.update({ where: { id: BigInt(req.auth!.userId) }, data: { planId: plan.id, planExpiresAt: slug === "free" ? null : undefined } });
+  invalidatePlanCache(req.auth!.userId);
   res.json({ plan: publicPlan(plan) });
 });
 
@@ -107,6 +108,7 @@ router.post("/upgrade", requireActiveUser, async (req, res) => {
       await tx.user.update({ where: { id: userId }, data: { planId: plan.id, planExpiresAt: expiresAt } });
       return created;
     });
+    invalidatePlanCache(req.auth!.userId);
     res.json({ order: toJson(order), paymentUrl: null, activated: true });
     return;
   }

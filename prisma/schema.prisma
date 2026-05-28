@@ -204,12 +204,9 @@ model Transaction {
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, orderId], map: "transactions_user_order_id_key")
-  @@index([userId, orderId], map: "idx_user_order_id")
   @@index([userId, status, createdAt], map: "idx_user_status_created")
   @@index([userId, status, settledAt], map: "idx_user_status_settled_at")
   @@index([userId, createdAt], map: "idx_user_created")
-  @@index([userId, amount], map: "idx_user_amount")
-  @@index([userId, totalPayment], map: "idx_user_total_payment")
   @@map("transactions")
 }
 

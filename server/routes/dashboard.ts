@@ -8,6 +8,14 @@ import { getWithdrawalSummary } from "../utils/withdrawals";
 const router = Router();
 router.use(requireAuth);
 
+type DashboardRow = {
+  total_income: bigint | null;
+  week_income: bigint | null;
+  today_income: bigint | null;
+  pending_amount: bigint | null;
+  pending_count: bigint | null;
+};
+
 router.get("/", async (req, res) => {
   const userId = BigInt(req.auth!.userId);
   const now = new Date();
@@ -20,32 +28,19 @@ router.get("/", async (req, res) => {
   const week = new Date(today);
   week.setDate(week.getDate() - 6);
 
-  const [
-    totalIncome,
-    weekIncome,
-    todayIncome,
-    pendingAggregate,
-    pendingCount,
-    recentTransactions,
-    withdrawalSummary,
-  ] = await Promise.all([
-    prisma.transaction.aggregate({
-      where: { userId, status: "completed", ...(retention ? { createdAt: { gte: retention } } : {}) },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.aggregate({
-      where: { userId, status: "completed", createdAt: { gte: week } },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.aggregate({
-      where: { userId, status: "completed", createdAt: { gte: today } },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.aggregate({
-      where: { userId, status: "pending" },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.count({ where: { userId, status: "pending" } }),
+  const createdAtFilter = retention ? retention < week ? retention : week : week;
+
+  const [dashboardRows, recentTransactions, withdrawalSummary] = await Promise.all([
+    prisma.$queryRaw<DashboardRow[]>`
+      SELECT
+        SUM(CASE WHEN status = 'completed' AND (${retention} IS NULL OR created_at >= ${retention}) THEN amount ELSE 0 END) as total_income,
+        SUM(CASE WHEN status = 'completed' AND created_at >= ${week} THEN amount ELSE 0 END) as week_income,
+        SUM(CASE WHEN status = 'completed' AND created_at >= ${today} THEN amount ELSE 0 END) as today_income,
+        SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count
+      FROM transactions
+      WHERE user_id = ${userId} AND created_at >= ${createdAtFilter}
+    `,
     prisma.transaction.findMany({
       where: { userId, ...(retention ? { createdAt: { gte: retention } } : {}) },
       orderBy: { createdAt: "desc" },
@@ -54,13 +49,15 @@ router.get("/", async (req, res) => {
     getWithdrawalSummary(userId),
   ]);
 
+  const row = dashboardRows[0];
+
   res.json({
     summary: {
-      totalIncome: totalIncome._sum.amount ?? 0,
-      weekIncome: weekIncome._sum.amount ?? 0,
-      todayIncome: todayIncome._sum.amount ?? 0,
-      pendingAmount: pendingAggregate._sum.amount ?? 0,
-      pendingCount,
+      totalIncome: Number(row?.total_income ?? 0),
+      weekIncome: Number(row?.week_income ?? 0),
+      todayIncome: Number(row?.today_income ?? 0),
+      pendingAmount: Number(row?.pending_amount ?? 0),
+      pendingCount: Number(row?.pending_count ?? 0),
       availableBalance: withdrawalSummary.availableBalance,
     },
     recentTransactions: toJson(recentTransactions),

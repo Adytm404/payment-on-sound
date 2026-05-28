@@ -5,45 +5,63 @@ export const MINIMUM_WITHDRAWAL = 10_000;
 export const WITHDRAWAL_RESERVED_STATUSES: WithdrawalStatus[] = ["pending", "approved", "processing", "paid"];
 export const WITHDRAWAL_ACTIVE_STATUSES: WithdrawalStatus[] = ["pending", "approved", "processing"];
 
+type TxRow = {
+  total_completed: bigint | null;
+  total_settled: bigint | null;
+  total_pending_settlement: bigint | null;
+  next_settlement_at: Date | null;
+};
+
+type WdRow = {
+  total_reserved: bigint | null;
+  total_paid: bigint | null;
+  has_active: bigint | null;
+};
+
 export async function getWithdrawalSummary(userId: bigint) {
   const now = new Date();
-  const [settings, completed, settled, pendingSettlement, nextSettlement, reserved, paid, activeRequest] = await Promise.all([
+
+  const [settings, txRows, wdRows, activeRequest] = await Promise.all([
     prisma.userSettings.findUnique({ where: { userId } }),
-    prisma.transaction.aggregate({ where: { userId, status: "completed" }, _sum: { amount: true } }),
-    prisma.transaction.aggregate({ where: { userId, status: "completed", settledAt: { lte: now } }, _sum: { amount: true } }),
-    prisma.transaction.aggregate({
-      where: { userId, status: "completed", OR: [{ settledAt: null }, { settledAt: { gt: now } }] },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.findFirst({
-      where: { userId, status: "completed", settledAt: { gt: now } },
-      orderBy: { settledAt: "asc" },
-      select: { settledAt: true },
-    }),
-    prisma.withdrawalRequest.aggregate({
-      where: { userId, status: { in: WITHDRAWAL_RESERVED_STATUSES } },
-      _sum: { amount: true },
-    }),
-    prisma.withdrawalRequest.aggregate({ where: { userId, status: "paid" }, _sum: { amount: true } }),
+    prisma.$queryRaw<TxRow[]>`
+      SELECT
+        SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_completed,
+        SUM(CASE WHEN status = 'completed' AND settled_at <= ${now} THEN amount ELSE 0 END) as total_settled,
+        SUM(CASE WHEN status = 'completed' AND (settled_at IS NULL OR settled_at > ${now}) THEN amount ELSE 0 END) as total_pending_settlement,
+        MIN(CASE WHEN status = 'completed' AND settled_at > ${now} THEN settled_at END) as next_settlement_at
+      FROM transactions
+      WHERE user_id = ${userId}
+    `,
+    prisma.$queryRaw<WdRow[]>`
+      SELECT
+        SUM(CASE WHEN status IN ('pending', 'approved', 'processing', 'paid') THEN amount ELSE 0 END) as total_reserved,
+        SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) as total_paid,
+        COUNT(CASE WHEN status IN ('pending', 'approved', 'processing') THEN 1 END) as has_active
+      FROM withdrawal_requests
+      WHERE user_id = ${userId}
+    `,
     prisma.withdrawalRequest.findFirst({
       where: { userId, status: { in: WITHDRAWAL_ACTIVE_STATUSES } },
       orderBy: { createdAt: "desc" },
     }),
   ]);
 
-  const completedIncome = completed._sum.amount ?? 0;
-  const settledIncome = settled._sum.amount ?? 0;
-  const reservedWithdrawal = reserved._sum.amount ?? 0;
+  const tx = txRows[0];
+  const wd = wdRows[0];
+  const completedIncome = Number(tx?.total_completed ?? 0);
+  const settledIncome = Number(tx?.total_settled ?? 0);
+  const reservedWithdrawal = Number(wd?.total_reserved ?? 0);
+
   return {
     availableBalance: Math.max(0, settledIncome - reservedWithdrawal),
     settledIncome,
-    pendingSettlement: pendingSettlement._sum.amount ?? 0,
-    nextSettlementAt: nextSettlement?.settledAt ?? null,
+    pendingSettlement: Number(tx?.total_pending_settlement ?? 0),
+    nextSettlementAt: tx?.next_settlement_at ?? null,
     completedIncome,
     reservedWithdrawal,
-    paidWithdrawal: paid._sum.amount ?? 0,
+    paidWithdrawal: Number(wd?.total_paid ?? 0),
     minimumWithdrawal: MINIMUM_WITHDRAWAL,
-    hasActiveRequest: Boolean(activeRequest),
+    hasActiveRequest: Number(wd?.has_active ?? 0) > 0,
     activeRequest,
     merchantStatus: settings?.merchantStatus ?? "draft",
     bank: {
