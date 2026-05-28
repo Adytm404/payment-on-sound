@@ -32,7 +32,7 @@ const STATUS_OPTIONS: Array<{ key: StatusFilter; label: string }> = [
 
 export default function ReportPage() {
   useApp();
-  const [period, setPeriod] = useState<Period>("week");
+  const [period, setPeriod] = useState<Period>("today");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
