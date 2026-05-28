@@ -7,6 +7,7 @@ import { broadcastToUser } from "../realtime";
 import { toJson } from "../utils/json";
 import { generateOrderId } from "../utils/orderId";
 import { getWithdrawalSummary, MINIMUM_WITHDRAWAL } from "../utils/withdrawals";
+import { notifyAdminsNewWithdrawal } from "../utils/email";
 
 const router = Router();
 router.use(requireAuth);
@@ -70,6 +71,18 @@ router.post("/", requireActiveUser, async (req, res) => {
     },
   });
   broadcastToUser(userId, "withdrawal:created", { type: "withdrawal:created", requestId: withdrawal.requestId, status: withdrawal.status });
+
+  const settings = await prisma.userSettings.findUnique({ where: { userId }, select: { merchantName: true } });
+  notifyAdminsNewWithdrawal({
+    merchantName: settings?.merchantName ?? "Merchant",
+    amount: withdrawal.amount,
+    bankName: withdrawal.bankName,
+    accountNumber: withdrawal.accountNumber,
+    accountName: withdrawal.accountName,
+    requestId: withdrawal.requestId,
+    userNote: withdrawal.userNote,
+  });
+
   res.status(201).json({ withdrawal: toJson(withdrawal) });
 });
 
