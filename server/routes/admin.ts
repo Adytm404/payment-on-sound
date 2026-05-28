@@ -104,6 +104,7 @@ router.get("/dashboard", async (_req, res) => {
     pendingWithdrawals,
     processingWithdrawals,
     paidWithdrawals,
+    pendingVerifications,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { plan: { slug: "pro" }, OR: [{ planExpiresAt: null }, { planExpiresAt: { gt: new Date() } }] } }),
@@ -120,6 +121,7 @@ router.get("/dashboard", async (_req, res) => {
     prisma.withdrawalRequest.count({ where: { status: "pending" } }),
     prisma.withdrawalRequest.count({ where: { status: "processing" } }),
     prisma.withdrawalRequest.aggregate({ where: { status: "paid" }, _sum: { amount: true } }),
+    prisma.userSettings.count({ where: { merchantStatus: "pending_review" } }),
   ]);
 
   res.json(toJson({
@@ -139,6 +141,7 @@ router.get("/dashboard", async (_req, res) => {
       pendingWithdrawals,
       processingWithdrawals,
       paidWithdrawals: paidWithdrawals._sum.amount ?? 0,
+      pendingVerifications,
     },
   }));
 });

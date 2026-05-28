@@ -135,6 +135,7 @@ export const adminApi = {
         pendingWithdrawals: number;
         processingWithdrawals: number;
         paidWithdrawals: number;
+        pendingVerifications: number;
       };
     }>("/admin/dashboard");
   },
