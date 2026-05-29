@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { showToast } from "@/components/Toast";
@@ -18,22 +18,67 @@ function daysLeft(value: string | null) {
 
 export default function PlanManagementPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
   const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [preview, setPreview] = useState<null | { amount: number; discountAmount: number; finalAmount: number; promo: any | null }>(null);
   const [loading, setLoading] = useState(false);
+  const [returnStatus, setReturnStatus] = useState<null | "checking" | "active" | "processing">(null);
 
   const load = async () => {
     const [plansRes, currentRes] = await Promise.all([api.listPlans(), api.currentPlan()]);
     setPlans(plansRes.plans);
     setCurrentPlan(currentRes.plan);
     setPlanExpiresAt(currentRes.planExpiresAt);
+    return currentRes;
   };
 
   useEffect(() => {
     load().catch(() => showToast("Gagal memuat plan", "error"));
+  }, []);
+
+  // Handle return from the Duitku payment page. The plan is activated
+  // asynchronously via callback, so poll currentPlan briefly for confirmation.
+  useEffect(() => {
+    if (searchParams.get("upgrade") !== "return") return;
+    let cancelled = false;
+    let attempts = 0;
+    setReturnStatus("checking");
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const res = await api.currentPlan();
+        if (cancelled) return;
+        setCurrentPlan(res.plan);
+        setPlanExpiresAt(res.planExpiresAt);
+        if (res.plan?.slug === "pro") {
+          setReturnStatus("active");
+          showToast("Plan Pro aktif", "success");
+          return;
+        }
+      } catch {
+        // keep polling
+      }
+      if (cancelled) return;
+      if (attempts >= 8) {
+        setReturnStatus("processing");
+        return;
+      }
+      setTimeout(poll, 2500);
+    };
+
+    poll();
+    // Clear the query param so a refresh doesn't re-trigger the flow.
+    searchParams.delete("upgrade");
+    setSearchParams(searchParams, { replace: true });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const proPlan = plans.find((plan) => plan.slug === "pro");
@@ -83,6 +128,40 @@ export default function PlanManagementPage() {
   return (
     <div className="screen gap-5">
       <Header title="Plan Merchant" subtitle="Kelola paket, promo, dan perpanjangan Pro" />
+
+      {returnStatus ? (
+        <section
+          className={`flex items-start gap-3 rounded-3xl border px-4 py-3 text-sm font-semibold ${
+            returnStatus === "active"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-blue-200 bg-blue-50 text-blue-800"
+          }`}
+        >
+          <Icon
+            name={returnStatus === "active" ? "check-circle-2" : "loader-circle"}
+            size={20}
+            className={returnStatus === "active" ? "mt-0.5" : "mt-0.5 animate-spin"}
+          />
+          <div>
+            {returnStatus === "active" ? (
+              <>
+                <p>Pembayaran berhasil, plan Pro sudah aktif.</p>
+                <p className="mt-0.5 text-xs font-medium text-emerald-700">Selamat menikmati fitur Pro.</p>
+              </>
+            ) : returnStatus === "checking" ? (
+              <>
+                <p>Memproses pembayaran kamu…</p>
+                <p className="mt-0.5 text-xs font-medium text-blue-700">Tunggu sebentar, kami sedang mengonfirmasi pembayaran.</p>
+              </>
+            ) : (
+              <>
+                <p>Pembayaran sedang diproses.</p>
+                <p className="mt-0.5 text-xs font-medium text-blue-700">Plan Pro aktif otomatis setelah pembayaran dikonfirmasi. Halaman ini akan diperbarui sendiri.</p>
+              </>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section className="hero-card p-5">
         <div className="relative z-10">

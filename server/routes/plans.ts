@@ -142,7 +142,7 @@ router.post("/upgrade", requireActiveUser, async (req, res) => {
       customerName: user.name,
       email: user.email,
       callbackUrl: `${apiUrl}/api/duitku/plan-callback`,
-      returnUrl: `${appUrl}/pengaturan?upgrade=return`,
+      returnUrl: `${appUrl}/pengaturan/plan?upgrade=return`,
     });
   } catch (err) {
     res.status(400).json({ message: err instanceof Error ? err.message : "Gagal membuat invoice Duitku" });
