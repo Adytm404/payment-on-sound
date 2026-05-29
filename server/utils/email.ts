@@ -108,3 +108,64 @@ export async function notifyAdminsNewWithdrawal(data: {
     console.error("Failed to notify admins about withdrawal:", err);
   }
 }
+
+type MerchantStatusKind = "approved" | "needs_revision" | "rejected";
+
+function emailShell(heading: string, body: string) {
+  return `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #D71920; margin-bottom: 16px;">${heading}</h2>
+      ${body}
+    </div>
+  `;
+}
+
+export function buildMerchantStatusEmail(kind: MerchantStatusKind, note: string | null) {
+  const appUrl = process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
+  const settingsUrl = `${appUrl}/pengaturan`;
+  const noteBlock = note?.trim()
+    ? `<p style="margin: 16px 0; padding: 12px 16px; background: #FFF1F1; border-radius: 12px; color: #b91c1c; font-size: 14px;">Catatan admin: ${note.trim()}</p>`
+    : "";
+
+  if (kind === "approved") {
+    return emailShell(
+      "Merchant Terverifikasi",
+      `<p>Selamat! Data merchant kamu sudah <strong>terverifikasi</strong> dan siap menerima pembayaran QRIS.</p>
+       <p style="margin: 24px 0;">
+         <a href="${settingsUrl}" style="display: inline-block; background: #D71920; color: #fff; padding: 12px 32px; border-radius: 99px; text-decoration: none; font-weight: bold;">Mulai Terima Pembayaran</a>
+       </p>`,
+    );
+  }
+  if (kind === "needs_revision") {
+    return emailShell(
+      "Data Merchant Perlu Perbaikan",
+      `<p>Admin meminta beberapa perbaikan pada data merchant kamu sebelum bisa diverifikasi.</p>
+       ${noteBlock}
+       <p style="margin: 24px 0;">
+         <a href="${settingsUrl}" style="display: inline-block; background: #D71920; color: #fff; padding: 12px 32px; border-radius: 99px; text-decoration: none; font-weight: bold;">Perbaiki Data Merchant</a>
+       </p>`,
+    );
+  }
+  return emailShell(
+    "Pendaftaran Merchant Ditolak",
+    `<p>Maaf, pendaftaran merchant kamu belum bisa kami setujui.</p>
+     ${noteBlock}
+     <p style="font-size: 13px; color: #888;">Kamu bisa memperbaiki data dan mengajukan ulang dari halaman pengaturan.</p>`,
+  );
+}
+
+const MERCHANT_STATUS_SUBJECT: Record<MerchantStatusKind, string> = {
+  approved: "[Pasound] Merchant kamu sudah terverifikasi",
+  needs_revision: "[Pasound] Data merchant perlu diperbaiki",
+  rejected: "[Pasound] Pendaftaran merchant ditolak",
+};
+
+export async function notifyMerchantStatus(userId: bigint, kind: MerchantStatusKind, note: string | null) {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!user?.email) return;
+    await sendEmail(user.email, MERCHANT_STATUS_SUBJECT[kind], buildMerchantStatusEmail(kind, note));
+  } catch (err) {
+    console.error("Failed to notify merchant about verification status:", err);
+  }
+}

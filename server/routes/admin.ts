@@ -9,6 +9,7 @@ import { broadcastToUser } from "../realtime";
 import { getWithdrawalSummary } from "../utils/withdrawals";
 import { invalidateAllPlanCache } from "../utils/plans";
 import { wibStartOfToday } from "../utils/settlement";
+import { notifyMerchantStatus } from "../utils/email";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -303,6 +304,7 @@ router.post("/merchants/:userId/request-revision", async (req, res) => {
     data: { merchantStatus: "needs_revision", verificationNote: String(req.body.verificationNote ?? "") },
   });
   broadcastToUser(merchant.userId, "settings:updated", { type: "settings:updated" });
+  notifyMerchantStatus(merchant.userId, "needs_revision", merchant.verificationNote);
   res.json({ merchant: toJson(merchant) });
 });
 
@@ -312,6 +314,7 @@ router.post("/merchants/:userId/reject", async (req, res) => {
     data: { merchantStatus: "rejected", verificationNote: String(req.body.verificationNote ?? "") },
   });
   broadcastToUser(merchant.userId, "settings:updated", { type: "settings:updated" });
+  notifyMerchantStatus(merchant.userId, "rejected", merchant.verificationNote);
   res.json({ merchant: toJson(merchant) });
 });
 
@@ -329,6 +332,7 @@ router.post("/merchants/:userId/approve", async (req, res) => {
   }
   const updated = await prisma.userSettings.update({ where: { userId }, data: { merchantStatus: "verified", verifiedAt: new Date(), verifiedByAdminId: BigInt(req.auth!.userId) } });
   broadcastToUser(userId, "settings:updated", { type: "settings:updated" });
+  notifyMerchantStatus(userId, "approved", null);
   res.json({ merchant: toJson(updated) });
 });
 
