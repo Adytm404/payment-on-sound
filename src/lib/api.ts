@@ -185,6 +185,7 @@ function mapConfig(settings: any): AppConfig {
     ttsRate: Number(settings.ttsRate ?? 1),
     ttsPitch: Number(settings.ttsPitch ?? 1),
     ttsVolume: Number(settings.ttsVolume ?? 1),
+    quickAmounts: Array.isArray(settings.quickAmounts) ? settings.quickAmounts.map(Number).filter((n: number) => Number.isFinite(n)) : [],
   };
 }
 
@@ -263,6 +264,7 @@ export const api = {
         ttsRate: config.ttsRate,
         ttsPitch: config.ttsPitch,
         ttsVolume: config.ttsVolume,
+        quickAmounts: config.quickAmounts,
       }),
     });
     return mapConfig(res.settings);

@@ -9,6 +9,7 @@ import { speakText } from "@/lib/tts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { VoiceSettings } from "@/components/VoiceSettings";
 import { NotificationSettings } from "@/components/NotificationSettings";
+import { QuickAmountSettings } from "@/components/QuickAmountSettings";
 import { api, type Plan } from "@/lib/api";
 import { useAuth } from "@/store/AuthContext";
 import { formatRupiah } from "@/lib/format";
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const [ttsRate, setTtsRate] = useState(config.ttsRate);
   const [ttsPitch, setTtsPitch] = useState(config.ttsPitch);
   const [ttsVolume, setTtsVolume] = useState(config.ttsVolume);
+  const [quickAmounts, setQuickAmounts] = useState<number[]>(config.quickAmounts);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<null | "transactions" | "logout">(
     null,
@@ -85,6 +87,7 @@ export default function SettingsPage() {
     setWithdrawBankCode(config.withdrawBankCode);
     setWithdrawAccountNumber(config.withdrawAccountNumber);
     setWithdrawAccountName(config.withdrawAccountName);
+    setQuickAmounts(config.quickAmounts);
   }, [
     config.merchantName,
     config.legalName,
@@ -92,6 +95,7 @@ export default function SettingsPage() {
     config.withdrawBankCode,
     config.withdrawAccountNumber,
     config.withdrawAccountName,
+    config.quickAmounts,
   ]);
 
   const dirty =
@@ -105,7 +109,8 @@ export default function SettingsPage() {
     ttsVoiceURI !== config.ttsVoiceURI ||
     ttsRate !== config.ttsRate ||
     ttsPitch !== config.ttsPitch ||
-    ttsVolume !== config.ttsVolume;
+    ttsVolume !== config.ttsVolume ||
+    quickAmounts.join(",") !== config.quickAmounts.join(",");
 
   const handleSave = () => {
     saveConfig({
@@ -124,6 +129,7 @@ export default function SettingsPage() {
       ttsRate,
       ttsPitch,
       ttsVolume,
+      quickAmounts,
     });
     showToast("Pengaturan tersimpan", "success");
   };
@@ -344,6 +350,8 @@ export default function SettingsPage() {
       />
 
       <NotificationSettings />
+
+      <QuickAmountSettings value={quickAmounts} onChange={setQuickAmounts} />
 
       <div className="sticky bottom-24 z-10 -mx-1 rounded-[1.5rem] bg-white/60 p-1.5 shadow-soft backdrop-blur-xl">
         <button

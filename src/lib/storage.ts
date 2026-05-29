@@ -46,6 +46,7 @@ export type AppConfig = {
   ttsRate: number;
   ttsPitch: number;
   ttsVolume: number;
+  quickAmounts: number[];
 };
 
 const KEYS = {
@@ -85,6 +86,7 @@ const DEFAULT_CONFIG: AppConfig = {
   ttsRate: 1,
   ttsPitch: 1,
   ttsVolume: 1,
+  quickAmounts: [],
 };
 
 function safeParse<T>(value: string | null, fallback: T): T {

@@ -21,7 +21,22 @@ const schema = z.object({
   ttsRate: z.number().min(0.1).max(2),
   ttsPitch: z.number().min(0).max(2),
   ttsVolume: z.number().min(0).max(1),
+  quickAmounts: z.array(z.number().int().min(1000).max(10_000_000)).max(8).optional(),
 });
+
+function parseQuickAmounts(raw: string): number[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((v) => Number(v.trim()))
+    .filter((v) => Number.isFinite(v) && v > 0);
+}
+
+function serializeQuickAmounts(values: number[]): string {
+  return Array.from(new Set(values.filter((v) => Number.isFinite(v) && v >= 1000 && v <= 10_000_000)))
+    .slice(0, 8)
+    .join(",");
+}
 
 function shape(settings: Awaited<ReturnType<typeof prisma.userSettings.findUnique>>) {
   if (!settings) return null;
@@ -58,6 +73,7 @@ function shape(settings: Awaited<ReturnType<typeof prisma.userSettings.findUniqu
     ttsRate: Number(settings.ttsRate),
     ttsPitch: Number(settings.ttsPitch),
     ttsVolume: Number(settings.ttsVolume),
+    quickAmounts: parseQuickAmounts(settings.quickAmounts),
   };
 }
 
@@ -85,6 +101,7 @@ router.put("/", requireActiveUser, async (req, res) => {
   const bankCode = parsed.data.withdrawBankCode?.trim() || null;
   const bankName = bankCode ? bankNameByCode(bankCode) : "";
   const nextStatus = current?.merchantStatus === "verified" ? "verified" : current?.merchantStatus === "pending_review" ? "pending_review" : "draft";
+  const quickAmounts = parsed.data.quickAmounts ? serializeQuickAmounts(parsed.data.quickAmounts) : undefined;
 
   const settings = await prisma.userSettings.upsert({
     where: { userId },
@@ -105,6 +122,7 @@ router.put("/", requireActiveUser, async (req, res) => {
       ttsRate: parsed.data.ttsRate,
       ttsPitch: parsed.data.ttsPitch,
       ttsVolume: parsed.data.ttsVolume,
+      ...(quickAmounts !== undefined ? { quickAmounts } : {}),
     },
     update: {
       ...(canEditMerchant ? {
@@ -122,6 +140,7 @@ router.put("/", requireActiveUser, async (req, res) => {
       ttsRate: parsed.data.ttsRate,
       ttsPitch: parsed.data.ttsPitch,
       ttsVolume: parsed.data.ttsVolume,
+      ...(quickAmounts !== undefined ? { quickAmounts } : {}),
     },
   });
 

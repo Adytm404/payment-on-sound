@@ -140,7 +140,7 @@ export default function CreatePaymentPage() {
         )}
 
         <div className="mt-2 flex flex-wrap justify-center gap-2">
-          {[10_000, 25_000, 50_000, 100_000].map((n) => (
+          {(config.quickAmounts.length > 0 ? config.quickAmounts : [10_000, 25_000, 50_000, 100_000]).map((n) => (
             <button
               key={n}
               type="button"

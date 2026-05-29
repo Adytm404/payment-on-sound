@@ -44,6 +44,7 @@ const DEFAULT_CONFIG: AppConfig = {
   ttsRate: 1,
   ttsPitch: 1,
   ttsVolume: 1,
+  quickAmounts: [],
 };
 
 const DEFAULT_DASHBOARD_SUMMARY: DashboardSummary = {
