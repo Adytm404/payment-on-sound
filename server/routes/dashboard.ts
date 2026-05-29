@@ -28,18 +28,18 @@ router.get("/", async (req, res) => {
   const week = new Date(today);
   week.setDate(week.getDate() - 6);
 
-  const createdAtFilter = retention ? retention < week ? retention : week : week;
-
+  // Only retention bounds the dataset. For Pro (retention = null) total income and
+  // pending are all-time; week/today are narrowed via the CASE expressions below.
   const [dashboardRows, recentTransactions, withdrawalSummary] = await Promise.all([
     prisma.$queryRaw<DashboardRow[]>`
       SELECT
-        SUM(CASE WHEN status = 'completed' AND (${retention} IS NULL OR created_at >= ${retention}) THEN amount ELSE 0 END) as total_income,
+        SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_income,
         SUM(CASE WHEN status = 'completed' AND created_at >= ${week} THEN amount ELSE 0 END) as week_income,
         SUM(CASE WHEN status = 'completed' AND created_at >= ${today} THEN amount ELSE 0 END) as today_income,
         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count
       FROM transactions
-      WHERE user_id = ${userId} AND created_at >= ${createdAtFilter}
+      WHERE user_id = ${userId} AND (${retention} IS NULL OR created_at >= ${retention})
     `,
     prisma.transaction.findMany({
       where: { userId, ...(retention ? { createdAt: { gte: retention } } : {}) },
