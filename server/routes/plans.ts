@@ -2,12 +2,14 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { requireActiveUser } from "../middleware/admin";
-import { getUserPlan, publicPlan, invalidatePlanCache } from "../utils/plans";
+import { getUserPlan, publicPlan, invalidatePlanCache, tryRedeemPromo } from "../utils/plans";
 import { createDuitkuInvoice } from "../utils/duitkuPop";
 import { toJson } from "../utils/json";
 
 const router = Router();
 router.use(requireAuth);
+
+class PromoExhaustedError extends Error {}
 
 router.get("/", async (_req, res) => {
   const plans = await prisma.plan.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" } });
@@ -100,16 +102,27 @@ router.post("/upgrade", requireActiveUser, async (req, res) => {
   const expiresAt = addDays(promo?.type === "free_trial" ? (promo.trialDays ?? plan.billingPeriodDays ?? 30) : (plan.billingPeriodDays ?? 30), baseExpiry);
 
   if (finalAmount <= 0) {
-    const order = await prisma.$transaction(async (tx) => {
-      const created = await tx.planOrder.create({
-        data: { userId, planId: plan.id, promoCodeId: promo?.id, orderId, provider: "promo", amount: plan.price, discountAmount, finalAmount, status: "paid", paidAt: new Date(), expiresAt },
+    try {
+      const order = await prisma.$transaction(async (tx) => {
+        if (promo) {
+          const redeemed = await tryRedeemPromo(tx, promo.id, promo.maxRedemptions);
+          if (!redeemed) throw new PromoExhaustedError();
+        }
+        const created = await tx.planOrder.create({
+          data: { userId, planId: plan.id, promoCodeId: promo?.id, orderId, provider: "promo", amount: plan.price, discountAmount, finalAmount, status: "paid", paidAt: new Date(), expiresAt },
+        });
+        await tx.user.update({ where: { id: userId }, data: { planId: plan.id, planExpiresAt: expiresAt } });
+        return created;
       });
-      if (promo) await tx.promoCode.update({ where: { id: promo.id }, data: { usedCount: { increment: 1 } } });
-      await tx.user.update({ where: { id: userId }, data: { planId: plan.id, planExpiresAt: expiresAt } });
-      return created;
-    });
-    invalidatePlanCache(req.auth!.userId);
-    res.json({ order: toJson(order), paymentUrl: null, activated: true });
+      invalidatePlanCache(req.auth!.userId);
+      res.json({ order: toJson(order), paymentUrl: null, activated: true });
+    } catch (err) {
+      if (err instanceof PromoExhaustedError) {
+        res.status(409).json({ message: "Kuota promo sudah habis" });
+        return;
+      }
+      throw err;
+    }
     return;
   }
 

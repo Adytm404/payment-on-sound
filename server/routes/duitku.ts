@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db";
 import { verifyDuitkuCallback } from "../utils/duitkuPop";
-import { invalidatePlanCache } from "../utils/plans";
+import { invalidatePlanCache, tryRedeemPromo } from "../utils/plans";
 
 const router = Router();
 
@@ -32,7 +32,7 @@ router.post("/plan-callback", async (req, res) => {
   if (resultCode === "00") {
     await prisma.$transaction(async (tx) => {
       await tx.planOrder.update({ where: { id: order.id }, data: { status: "paid", paidAt: new Date(), providerReference: reference || order.providerReference } });
-      if (order.promoCodeId) await tx.promoCode.update({ where: { id: order.promoCodeId }, data: { usedCount: { increment: 1 } } });
+      if (order.promoCodeId) await tryRedeemPromo(tx, order.promoCodeId, order.promoCode?.maxRedemptions ?? null);
       await tx.user.update({ where: { id: order.userId }, data: { planId: order.planId, planExpiresAt: order.expiresAt } });
     });
     invalidatePlanCache(order.userId.toString());

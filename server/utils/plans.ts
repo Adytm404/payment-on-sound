@@ -1,11 +1,32 @@
 import { prisma } from "../db";
-import type { Plan } from "@prisma/client";
+import type { Plan, Prisma } from "@prisma/client";
 
 const planCache = new Map<string, { plan: Plan | null; expiresAt: number }>();
 const PLAN_CACHE_TTL = 60_000;
 
 export function invalidatePlanCache(userId: bigint | string) {
   planCache.delete(userId.toString());
+}
+
+/**
+ * Atomically increments a promo's usedCount, respecting maxRedemptions.
+ * Returns true if the redemption was counted, false if the cap was reached.
+ * Uses a conditional updateMany so concurrent redemptions can't exceed the cap.
+ */
+export async function tryRedeemPromo(
+  tx: Prisma.TransactionClient,
+  promoId: bigint,
+  maxRedemptions: number | null,
+): Promise<boolean> {
+  if (maxRedemptions == null) {
+    await tx.promoCode.update({ where: { id: promoId }, data: { usedCount: { increment: 1 } } });
+    return true;
+  }
+  const result = await tx.promoCode.updateMany({
+    where: { id: promoId, usedCount: { lt: maxRedemptions } },
+    data: { usedCount: { increment: 1 } },
+  });
+  return result.count > 0;
 }
 
 export async function getFreePlan() {
