@@ -29,6 +29,13 @@ router.post("/plan-callback", async (req, res) => {
     return;
   }
 
+  // Defense-in-depth: the signature already covers the amount, but reject any
+  // callback whose amount doesn't match the order we created.
+  if (Math.round(Number(amount)) !== order.finalAmount) {
+    res.status(400).send("Amount mismatch");
+    return;
+  }
+
   if (resultCode === "00") {
     await prisma.$transaction(async (tx) => {
       await tx.planOrder.update({ where: { id: order.id }, data: { status: "paid", paidAt: new Date(), providerReference: reference || order.providerReference } });
