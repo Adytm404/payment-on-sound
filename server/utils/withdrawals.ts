@@ -1,5 +1,7 @@
-import type { WithdrawalStatus } from "@prisma/client";
+import type { Prisma, WithdrawalStatus } from "@prisma/client";
 import { prisma } from "../db";
+
+type PrismaClientLike = Prisma.TransactionClient | typeof prisma;
 
 export const MINIMUM_WITHDRAWAL = 10_000;
 export const WITHDRAWAL_RESERVED_STATUSES: WithdrawalStatus[] = ["pending", "approved", "processing", "paid"];
@@ -18,12 +20,12 @@ type WdRow = {
   has_active: bigint | null;
 };
 
-export async function getWithdrawalSummary(userId: bigint) {
+export async function getWithdrawalSummary(userId: bigint, client: PrismaClientLike = prisma) {
   const now = new Date();
 
   const [settings, txRows, wdRows, activeRequest] = await Promise.all([
-    prisma.userSettings.findUnique({ where: { userId } }),
-    prisma.$queryRaw<TxRow[]>`
+    client.userSettings.findUnique({ where: { userId } }),
+    client.$queryRaw<TxRow[]>`
       SELECT
         SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_completed,
         SUM(CASE WHEN status = 'completed' AND settled_at <= ${now} THEN amount ELSE 0 END) as total_settled,
@@ -32,7 +34,7 @@ export async function getWithdrawalSummary(userId: bigint) {
       FROM transactions
       WHERE user_id = ${userId}
     `,
-    prisma.$queryRaw<WdRow[]>`
+    client.$queryRaw<WdRow[]>`
       SELECT
         SUM(CASE WHEN status IN ('pending', 'approved', 'processing', 'paid') THEN amount ELSE 0 END) as total_reserved,
         SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) as total_paid,
@@ -40,7 +42,7 @@ export async function getWithdrawalSummary(userId: bigint) {
       FROM withdrawal_requests
       WHERE user_id = ${userId}
     `,
-    prisma.withdrawalRequest.findFirst({
+    client.withdrawalRequest.findFirst({
       where: { userId, status: { in: WITHDRAWAL_ACTIVE_STATUSES } },
       orderBy: { createdAt: "desc" },
     }),

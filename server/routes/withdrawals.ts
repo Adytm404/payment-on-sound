@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { requireActiveUser } from "../middleware/admin";
@@ -11,6 +12,12 @@ import { notifyAdminsNewWithdrawal } from "../utils/email";
 
 const router = Router();
 router.use(requireAuth);
+
+class WithdrawalError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
 
 const createSchema = z.object({
   amount: z.number().int().min(MINIMUM_WITHDRAWAL),
@@ -40,50 +47,62 @@ router.post("/", requireActiveUser, async (req, res) => {
   }
 
   const userId = BigInt(req.auth!.userId);
-  const summary = await getWithdrawalSummary(userId);
-  if (summary.merchantStatus !== "verified") {
-    res.status(403).json({ message: "Data merchant belum diverifikasi admin" });
-    return;
-  }
-  if (!summary.bank.code || !summary.bank.name || !summary.bank.accountNumber || !summary.bank.accountName) {
-    res.status(400).json({ message: "Rekening penarikan belum lengkap" });
-    return;
-  }
-  if (summary.hasActiveRequest) {
-    res.status(409).json({ message: "Masih ada request penarikan yang aktif" });
-    return;
-  }
-  if (parsed.data.amount > summary.availableBalance) {
-    res.status(400).json({ message: "Saldo tersedia tidak mencukupi. Beberapa transaksi mungkin masih menunggu settlement H+1 pukul 12.00 WIB." });
-    return;
-  }
+  try {
+    const withdrawal = await prisma.$transaction(async (tx) => {
+      const summary = await getWithdrawalSummary(userId, tx);
+      if (summary.merchantStatus !== "verified") {
+        throw new WithdrawalError(403, "Data merchant belum diverifikasi admin");
+      }
+      if (!summary.bank.code || !summary.bank.name || !summary.bank.accountNumber || !summary.bank.accountName) {
+        throw new WithdrawalError(400, "Rekening penarikan belum lengkap");
+      }
+      if (summary.hasActiveRequest) {
+        throw new WithdrawalError(409, "Masih ada request penarikan yang aktif");
+      }
+      if (parsed.data.amount > summary.availableBalance) {
+        throw new WithdrawalError(400, "Saldo tersedia tidak mencukupi. Beberapa transaksi mungkin masih menunggu settlement H+1 pukul 12.00 WIB.");
+      }
 
-  const withdrawal = await prisma.withdrawalRequest.create({
-    data: {
-      userId,
-      requestId: generateOrderId("WD"),
-      amount: parsed.data.amount,
-      bankCode: summary.bank.code,
-      bankName: summary.bank.name,
-      accountNumber: summary.bank.accountNumber,
-      accountName: summary.bank.accountName,
-      userNote: parsed.data.userNote?.trim() || null,
-    },
-  });
-  broadcastToUser(userId, "withdrawal:created", { type: "withdrawal:created", requestId: withdrawal.requestId, status: withdrawal.status });
+      return tx.withdrawalRequest.create({
+        data: {
+          userId,
+          requestId: generateOrderId("WD"),
+          amount: parsed.data.amount,
+          bankCode: summary.bank.code,
+          bankName: summary.bank.name,
+          accountNumber: summary.bank.accountNumber,
+          accountName: summary.bank.accountName,
+          userNote: parsed.data.userNote?.trim() || null,
+        },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-  const settings = await prisma.userSettings.findUnique({ where: { userId }, select: { merchantName: true } });
-  notifyAdminsNewWithdrawal({
-    merchantName: settings?.merchantName ?? "Merchant",
-    amount: withdrawal.amount,
-    bankName: withdrawal.bankName,
-    accountNumber: withdrawal.accountNumber,
-    accountName: withdrawal.accountName,
-    requestId: withdrawal.requestId,
-    userNote: withdrawal.userNote,
-  });
+    broadcastToUser(userId, "withdrawal:created", { type: "withdrawal:created", requestId: withdrawal.requestId, status: withdrawal.status });
 
-  res.status(201).json({ withdrawal: toJson(withdrawal) });
+    const settings = await prisma.userSettings.findUnique({ where: { userId }, select: { merchantName: true } });
+    notifyAdminsNewWithdrawal({
+      merchantName: settings?.merchantName ?? "Merchant",
+      amount: withdrawal.amount,
+      bankName: withdrawal.bankName,
+      accountNumber: withdrawal.accountNumber,
+      accountName: withdrawal.accountName,
+      requestId: withdrawal.requestId,
+      userNote: withdrawal.userNote,
+    });
+
+    res.status(201).json({ withdrawal: toJson(withdrawal) });
+  } catch (err) {
+    if (err instanceof WithdrawalError) {
+      res.status(err.status).json({ message: err.message });
+      return;
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && (err.code === "P2034" || err.code === "P2002")) {
+      // Serialization conflict / deadlock from a concurrent withdrawal request.
+      res.status(409).json({ message: "Permintaan penarikan sedang diproses. Coba lagi sebentar." });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.post("/:requestId/cancel", requireActiveUser, async (req, res) => {
