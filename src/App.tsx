@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "@/components/BottomNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { InstallPwaBanner } from "@/components/InstallPwaBanner";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useAuth } from "@/store/AuthContext";
 import { showToast } from "@/components/Toast";
@@ -24,6 +25,7 @@ export default function App() {
   return (
     <div className="app-shell relative">
       <ScrollToTop />
+      <InstallPwaBanner />
       {user && !user.emailVerified ? (
         <div className="mx-5 mt-5 flex items-center justify-between gap-3 rounded-3xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">
           <span>Verifikasi email kamu untuk mulai menerima pembayaran.</span>
