@@ -9,7 +9,7 @@ import { cancelTransaction, createQris, simulatePayment, transactionDetail } fro
 import { toJson } from "../utils/json";
 import { broadcastToUser } from "../realtime";
 import { getUserPlan, monthStart, retentionStart } from "../utils/plans";
-import { getSettlementAt } from "../utils/settlement";
+import { getSettlementAt, wibStartOfToday, wibStartDaysAgo } from "../utils/settlement";
 
 const router = Router();
 router.use(requireAuth);
@@ -22,18 +22,10 @@ const createSchema = z.object({
 const statusValues = ["pending", "completed", "cancelled", "expired", "failed"] as const;
 
 function dateStart(period?: string) {
-  const now = new Date();
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  if (period === "today") return d;
-  if (period === "week") {
-    d.setDate(d.getDate() - 6);
-    return d;
-  }
-  if (period === "month") {
-    d.setDate(d.getDate() - 29);
-    return d;
-  }
+  const today = wibStartOfToday();
+  if (period === "today") return today;
+  if (period === "week") return wibStartDaysAgo(6);
+  if (period === "month") return wibStartDaysAgo(29);
   return null;
 }
 

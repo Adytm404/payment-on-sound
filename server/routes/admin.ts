@@ -8,6 +8,7 @@ import { toJson } from "../utils/json";
 import { broadcastToUser } from "../realtime";
 import { getWithdrawalSummary } from "../utils/withdrawals";
 import { invalidateAllPlanCache } from "../utils/plans";
+import { wibStartOfToday } from "../utils/settlement";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -86,8 +87,7 @@ function userWhere(search: string): Prisma.UserWhereInput {
 }
 
 router.get("/dashboard", async (_req, res) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = wibStartOfToday();
 
   type TxRow = { total: bigint; completed: bigint; pending: bigint; income: bigint | null; fees: bigint | null; today_income: bigint | null };
   type WdRow = { pending: bigint; processing: bigint; paid: bigint | null };

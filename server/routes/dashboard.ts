@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth";
 import { toJson } from "../utils/json";
 import { getUserPlan, retentionStart } from "../utils/plans";
 import { getWithdrawalSummary } from "../utils/withdrawals";
+import { wibStartOfToday, wibStartDaysAgo } from "../utils/settlement";
 
 const router = Router();
 router.use(requireAuth);
@@ -18,15 +19,11 @@ type DashboardRow = {
 
 router.get("/", async (req, res) => {
   const userId = BigInt(req.auth!.userId);
-  const now = new Date();
   const plan = await getUserPlan(userId);
   const retention = retentionStart(plan?.reportRetentionDays);
 
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-
-  const week = new Date(today);
-  week.setDate(week.getDate() - 6);
+  const today = wibStartOfToday();
+  const week = wibStartDaysAgo(6);
 
   // Only retention bounds the dataset. For Pro (retention = null) total income and
   // pending are all-time; week/today are narrowed via the CASE expressions below.

@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import type { Plan, Prisma } from "@prisma/client";
+import { wibStartOfMonth, wibStartDaysAgo } from "./settlement";
 
 const planCache = new Map<string, { plan: Plan | null; expiresAt: number }>();
 const PLAN_CACHE_TTL = 60_000;
@@ -67,18 +68,12 @@ export async function getUserPlan(userId: bigint) {
 }
 
 export function monthStart() {
-  const start = new Date();
-  start.setDate(1);
-  start.setHours(0, 0, 0, 0);
-  return start;
+  return wibStartOfMonth();
 }
 
 export function retentionStart(days: number | null | undefined) {
   if (!days) return null;
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - Math.max(0, days - 1));
-  return start;
+  return wibStartDaysAgo(Math.max(0, days - 1));
 }
 
 export function publicPlan(plan: Awaited<ReturnType<typeof getUserPlan>>) {
