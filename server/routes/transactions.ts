@@ -185,6 +185,10 @@ router.get("/export/csv", async (req, res) => {
   const status = String(req.query.status ?? "all");
   const start = dateStart(period);
   const plan = await getUserPlan(userId);
+  if (!plan?.canExportReports) {
+    res.status(403).json({ message: "Ekspor laporan tersedia di plan Pro." });
+    return;
+  }
   const retention = retentionStart(plan?.reportRetentionDays);
 
   const where: Prisma.TransactionWhereInput = { userId };
