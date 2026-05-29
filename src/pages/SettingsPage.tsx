@@ -191,7 +191,7 @@ export default function SettingsPage() {
 
   return (
     <div className="screen gap-5">
-      <Header title="Pengaturan" subtitle="Konfigurasi Pakasir & data lokal" />
+      <Header title="Pengaturan" subtitle="Kelola data merchant, suara, dan akun" />
 
       <section className="card p-5">
         <div className="mb-4 flex items-center gap-2">
@@ -577,17 +577,6 @@ export default function SettingsPage() {
         <p className="text-xs font-semibold text-primary">Pasound v0.1</p>
         <p className="mt-0.5 text-[11px] text-ink-muted">
           QRIS Generator & Laporan Keuangan
-        </p>
-        <p className="mt-2 text-[11px] text-ink-soft">
-          Powered by{" "}
-          <a
-            href="https://pakasir.com"
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-primary"
-          >
-            Pakasir
-          </a>
         </p>
       </section>
     </div>

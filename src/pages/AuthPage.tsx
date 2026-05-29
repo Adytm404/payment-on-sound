@@ -37,7 +37,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
           <div>
             <h1 className="text-2xl font-extrabold">{isRegister ? "Buat Akun" : "Masuk"}</h1>
             <p className="text-sm text-ink-muted">
-              {isRegister ? "Mulai simpan transaksi ke MySQL" : "Lanjutkan kelola pembayaran QRIS"}
+              {isRegister ? "Mulai terima pembayaran QRIS" : "Lanjutkan kelola pembayaran QRIS"}
             </p>
           </div>
         </div>

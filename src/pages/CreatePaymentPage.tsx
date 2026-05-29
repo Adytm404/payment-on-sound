@@ -22,7 +22,9 @@ export default function CreatePaymentPage() {
   const amount = Number(amountStr) || 0;
   const tooLow = amount < MIN_AMOUNT;
   const tooHigh = amount > MAX_AMOUNT;
-  const blocked = config.merchantStatus !== "verified" || !isConfigured;
+  const notVerified = config.merchantStatus !== "verified";
+  const integrationPending = !notVerified && !isConfigured;
+  const blocked = notVerified || integrationPending;
 
   const handleKey = (key: NumberPadKey) => {
     setAmountStr((prev) => {
@@ -49,11 +51,6 @@ export default function CreatePaymentPage() {
   };
 
   const handleGenerate = async () => {
-    if (!isConfigured) {
-      showToast("Atur slug & API key Pakasir di Pengaturan", "error");
-      navigate("/pengaturan");
-      return;
-    }
     if (tooLow) {
       showToast(`Minimal ${formatRupiah(MIN_AMOUNT)}`, "error");
       return;
@@ -84,15 +81,26 @@ export default function CreatePaymentPage() {
       {blocked ? (
         <section className="card my-auto p-6 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-50 text-primary">
-            <Icon name="badge-check" size={24} />
+            <Icon name={integrationPending ? "loader-circle" : "badge-check"} size={24} className={integrationPending ? "animate-spin" : ""} />
           </div>
-          <h2 className="text-xl font-extrabold">Merchant belum terverifikasi</h2>
-          <p className="mt-2 text-sm text-ink-muted">
-            Lengkapi data merchant dan tunggu verifikasi admin sebelum membuat QRIS.
-          </p>
-          <button type="button" onClick={() => navigate("/pengaturan")} className="btn-primary mt-5 w-full">
-            Lengkapi Data Merchant
-          </button>
+          {integrationPending ? (
+            <>
+              <h2 className="text-xl font-extrabold">Integrasi pembayaran disiapkan</h2>
+              <p className="mt-2 text-sm text-ink-muted">
+                Data merchant kamu sudah terverifikasi. Admin sedang mengaktifkan integrasi pembayaran. Kamu bisa langsung membuat QRIS setelah aktif.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-extrabold">Merchant belum terverifikasi</h2>
+              <p className="mt-2 text-sm text-ink-muted">
+                Lengkapi data merchant dan tunggu verifikasi admin sebelum membuat QRIS.
+              </p>
+              <button type="button" onClick={() => navigate("/pengaturan")} className="btn-primary mt-5 w-full">
+                Lengkapi Data Merchant
+              </button>
+            </>
+          )}
         </section>
       ) : (
         <>
