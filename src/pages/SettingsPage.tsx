@@ -8,6 +8,7 @@ import { useSpeechVoices } from "@/hooks/useSpeechVoices";
 import { speakText } from "@/lib/tts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { VoiceSettings } from "@/components/VoiceSettings";
+import { NotificationSettings } from "@/components/NotificationSettings";
 import { api, type Plan } from "@/lib/api";
 import { useAuth } from "@/store/AuthContext";
 import { formatRupiah } from "@/lib/format";
@@ -341,6 +342,8 @@ export default function SettingsPage() {
         onVolumeChange={setTtsVolume}
         onPreview={handlePreviewVoice}
       />
+
+      <NotificationSettings />
 
       <div className="sticky bottom-24 z-10 -mx-1 rounded-[1.5rem] bg-white/60 p-1.5 shadow-soft backdrop-blur-xl">
         <button

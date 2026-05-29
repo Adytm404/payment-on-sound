@@ -402,4 +402,22 @@ export const api = {
       body: JSON.stringify({ promoCode }),
     });
   },
+
+  pushPublicKey() {
+    return request<{ publicKey: string; enabled: boolean }>("/push/public-key", {}, { auth: false });
+  },
+
+  pushSubscribe(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    return request<{ ok: true }>("/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify(subscription),
+    });
+  },
+
+  pushUnsubscribe(endpoint: string) {
+    return request<{ ok: true }>("/push/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint }),
+    });
+  },
 };
