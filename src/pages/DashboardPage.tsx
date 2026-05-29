@@ -5,6 +5,7 @@ import { Icon } from "@/components/Icon";
 import { TransactionItem } from "@/components/TransactionItem";
 import { EmptyState } from "@/components/EmptyState";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { IncomeAnalytics } from "@/components/IncomeAnalytics";
 import { formatRupiah } from "@/lib/format";
 
 export default function DashboardPage() {
@@ -150,6 +151,8 @@ export default function DashboardPage() {
       ) : null}
 
       {/* Recent transactions */}
+      {fullyOnboarded ? <IncomeAnalytics /> : null}
+
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-ink">Transaksi Terbaru</h3>

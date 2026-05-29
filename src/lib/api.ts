@@ -321,6 +321,14 @@ export const api = {
     };
   },
 
+  getAnalytics(range: "7d" | "30d") {
+    return request<{
+      rangeDays: number;
+      daily: Array<{ day: string; total: number; count: number }>;
+      hourly: Array<{ hour: number; total: number; count: number }>;
+    }>(`/dashboard/analytics?range=${range}`);
+  },
+
   async createTransaction(input: { amount: number; description?: string }) {
     const res = await request<{ transaction: any }>("/transactions", {
       method: "POST",
