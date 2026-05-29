@@ -229,6 +229,20 @@ export default function SettingsPage() {
           {config.verificationNote ? <p className="mt-1 text-rose-600">Catatan admin: {config.verificationNote}</p> : null}
         </div>
 
+        {config.merchantStatus === "pending_review" ? (
+          <div className="mb-4 rounded-[1.5rem] border border-blue-100 bg-blue-50 p-4 text-sm">
+            <div className="flex items-start gap-3">
+              <Icon name="clock" size={20} className="mt-0.5 text-blue-600" />
+              <div>
+                <p className="font-extrabold text-blue-800">Data sedang ditinjau admin</p>
+                <p className="mt-1 text-xs font-semibold text-blue-700">
+                  Verifikasi biasanya selesai dalam 1×24 jam kerja. Kamu akan dapat email saat statusnya berubah, jadi tidak perlu menunggu di halaman ini.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {config.merchantStatus === "verified" ? (
           <div className="mb-4 rounded-[1.5rem] border border-emerald-100 bg-emerald-50 p-4 text-sm">
             <div className="flex items-start gap-3">
