@@ -12,6 +12,7 @@ import { adminRouter } from "./routes/admin";
 import { plansRouter } from "./routes/plans";
 import { duitkuRouter } from "./routes/duitku";
 import { withdrawalsRouter } from "./routes/withdrawals";
+import { startReconciliationLoop } from "./utils/reconcile";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
@@ -43,4 +44,5 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 
 app.listen(port, () => {
   console.log(`API running on http://localhost:${port}`);
+  startReconciliationLoop();
 });
