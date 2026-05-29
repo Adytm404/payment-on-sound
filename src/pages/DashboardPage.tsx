@@ -1,16 +1,20 @@
 import { Link } from "react-router-dom";
 import { useApp } from "@/store/AppContext";
+import { useAuth } from "@/store/AuthContext";
 import { Icon } from "@/components/Icon";
 import { TransactionItem } from "@/components/TransactionItem";
 import { EmptyState } from "@/components/EmptyState";
+import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { formatRupiah } from "@/lib/format";
 
 export default function DashboardPage() {
   const { transactions, config, isConfigured, dashboardSummary } = useApp();
+  const { user } = useAuth();
 
   const recent = transactions.slice(0, 20);
   const merchantReady = config.merchantStatus === "verified" && isConfigured;
-  const merchantVerified = config.merchantStatus === "verified";
+  const emailVerified = Boolean(user?.emailVerified);
+  const fullyOnboarded = emailVerified && merchantReady;
 
   return (
     <div className="screen gap-5">
@@ -35,6 +39,14 @@ export default function DashboardPage() {
           <Icon name="settings" size={18} />
         </Link>
       </div>
+
+      {!fullyOnboarded ? (
+        <OnboardingProgress
+          emailVerified={emailVerified}
+          merchantStatus={config.merchantStatus}
+          isConfigured={isConfigured}
+        />
+      ) : null}
 
       {/* Balance */}
       <section className="flex flex-col items-center gap-3 py-5 text-center">
@@ -105,28 +117,18 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {!merchantReady ? (
-          <EmptyState
-            icon={merchantVerified ? "loader-circle" : "badge-check"}
-            title={merchantVerified ? "Integrasi pembayaran diproses" : "Lengkapi data merchant"}
-            description={merchantVerified ? "Admin sedang mengaktifkan integrasi pembayaran merchant kamu." : "Kirim data merchant dan tunggu verifikasi admin sebelum menerima pembayaran QRIS."}
-            action={
-              <Link to="/pengaturan" className="inline-flex items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-3 text-sm font-extrabold text-white shadow-card transition active:scale-[0.98]">
-                <Icon name="arrow-right" size={16} />
-                Buka Pengaturan
-              </Link>
-            }
-          />
-        ) : recent.length === 0 ? (
+        {recent.length === 0 ? (
           <EmptyState
             icon="receipt"
             title="Belum ada transaksi"
-            description="Mulai buat QRIS pertama Anda untuk menerima pembayaran."
+            description={merchantReady ? "Mulai buat QRIS pertama Anda untuk menerima pembayaran." : "Transaksi akan muncul di sini setelah akun kamu aktif."}
             action={
-              <Link to="/transaksi/baru" className="inline-flex items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-3 text-sm font-extrabold text-white shadow-card transition active:scale-[0.98]">
-                <Icon name="plus" size={16} />
-                Buat QRIS
-              </Link>
+              merchantReady ? (
+                <Link to="/transaksi/baru" className="inline-flex items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-3 text-sm font-extrabold text-white shadow-card transition active:scale-[0.98]">
+                  <Icon name="plus" size={16} />
+                  Buat QRIS
+                </Link>
+              ) : undefined
             }
           />
         ) : (
