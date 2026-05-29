@@ -8,6 +8,10 @@ export function invalidatePlanCache(userId: bigint | string) {
   planCache.delete(userId.toString());
 }
 
+export function invalidateAllPlanCache() {
+  planCache.clear();
+}
+
 /**
  * Atomically increments a promo's usedCount, respecting maxRedemptions.
  * Returns true if the redemption was counted, false if the cap was reached.

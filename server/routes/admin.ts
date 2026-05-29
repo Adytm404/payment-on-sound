@@ -7,6 +7,7 @@ import { requireAdmin } from "../middleware/admin";
 import { toJson } from "../utils/json";
 import { broadcastToUser } from "../realtime";
 import { getWithdrawalSummary } from "../utils/withdrawals";
+import { invalidateAllPlanCache } from "../utils/plans";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -214,6 +215,7 @@ router.put("/plans/:slug", async (req, res) => {
     data: parsed.data,
     include: { _count: { select: { users: true } } },
   });
+  invalidateAllPlanCache();
   res.json({ plan: toJson(plan) });
 });
 
