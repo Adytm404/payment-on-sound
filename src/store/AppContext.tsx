@@ -53,6 +53,10 @@ const DEFAULT_DASHBOARD_SUMMARY: DashboardSummary = {
   pendingAmount: 0,
   pendingCount: 0,
   availableBalance: 0,
+  planName: "Free",
+  planSlug: "free",
+  monthlyTransactionLimit: null,
+  monthlyTransactionUsed: 0,
 };
 
 type AppContextValue = {

@@ -47,6 +47,10 @@ export type DashboardSummary = {
   pendingAmount: number;
   pendingCount: number;
   availableBalance: number;
+  planName: string;
+  planSlug: string;
+  monthlyTransactionLimit: number | null;
+  monthlyTransactionUsed: number;
 };
 
 export type WithdrawalStatus = "pending" | "approved" | "processing" | "paid" | "rejected" | "cancelled";

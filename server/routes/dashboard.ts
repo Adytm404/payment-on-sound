@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { toJson } from "../utils/json";
-import { getUserPlan, retentionStart } from "../utils/plans";
+import { getUserPlan, retentionStart, monthStart } from "../utils/plans";
 import { getWithdrawalSummary } from "../utils/withdrawals";
 import { wibStartOfToday, wibStartDaysAgo } from "../utils/settlement";
 
@@ -25,9 +25,11 @@ router.get("/", async (req, res) => {
   const today = wibStartOfToday();
   const week = wibStartDaysAgo(6);
 
+  const monthlyLimit = plan?.monthlyTransactionLimit ?? null;
+
   // Only retention bounds the dataset. For Pro (retention = null) total income and
   // pending are all-time; week/today are narrowed via the CASE expressions below.
-  const [dashboardRows, recentTransactions, withdrawalSummary] = await Promise.all([
+  const [dashboardRows, recentTransactions, withdrawalSummary, monthlyUsed] = await Promise.all([
     prisma.$queryRaw<DashboardRow[]>`
       SELECT
         SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_income,
@@ -44,6 +46,7 @@ router.get("/", async (req, res) => {
       take: 20,
     }),
     getWithdrawalSummary(userId),
+    monthlyLimit ? prisma.transaction.count({ where: { userId, createdAt: { gte: monthStart() } } }) : Promise.resolve(0),
   ]);
 
   const row = dashboardRows[0];
@@ -56,6 +59,10 @@ router.get("/", async (req, res) => {
       pendingAmount: Number(row?.pending_amount ?? 0),
       pendingCount: Number(row?.pending_count ?? 0),
       availableBalance: withdrawalSummary.availableBalance,
+      planName: plan?.name ?? "Free",
+      planSlug: plan?.slug ?? "free",
+      monthlyTransactionLimit: monthlyLimit,
+      monthlyTransactionUsed: monthlyLimit ? monthlyUsed : 0,
     },
     recentTransactions: toJson(recentTransactions),
   });

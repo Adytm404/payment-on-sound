@@ -16,6 +16,15 @@ export default function DashboardPage() {
   const emailVerified = Boolean(user?.emailVerified);
   const fullyOnboarded = emailVerified && merchantReady;
 
+  const limit = dashboardSummary.monthlyTransactionLimit;
+  const quota = limit
+    ? {
+        used: dashboardSummary.monthlyTransactionUsed,
+        limit,
+        ratio: limit > 0 ? dashboardSummary.monthlyTransactionUsed / limit : 0,
+      }
+    : null;
+
   return (
     <div className="screen gap-5">
       {/* Greeting */}
@@ -107,6 +116,38 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* Free quota nudge */}
+      {fullyOnboarded && quota && quota.ratio >= 0.5 ? (
+        <section className={`card p-4 ${quota.ratio >= 0.8 ? "border border-amber-200 bg-amber-50" : ""}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-ink">Kuota transaksi {dashboardSummary.planName}</p>
+              <p className="text-[11px] text-ink-muted">
+                {quota.used} dari {quota.limit} transaksi bulan ini
+              </p>
+            </div>
+            <span className={`shrink-0 text-sm font-extrabold tabular-nums ${quota.ratio >= 0.8 ? "text-amber-700" : "text-ink"}`}>
+              {quota.used}/{quota.limit}
+            </span>
+          </div>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-alt">
+            <div
+              className={`h-full rounded-full ${quota.ratio >= 0.8 ? "bg-amber-500" : "bg-[#D71920]"}`}
+              style={{ width: `${Math.min(100, Math.round(quota.ratio * 100))}%` }}
+            />
+          </div>
+          {quota.ratio >= 0.8 ? (
+            <Link
+              to="/pengaturan/plan"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#D71920]"
+            >
+              <Icon name="zap" size={14} />
+              {quota.used >= quota.limit ? "Kuota habis, upgrade ke Pro" : "Hampir penuh, upgrade ke Pro"}
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* Recent transactions */}
       <section className="flex flex-col gap-3">
