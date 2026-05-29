@@ -5,6 +5,7 @@ import { Icon } from "@/components/Icon";
 import { QRDisplay } from "@/components/QRDisplay";
 import { Modal } from "@/components/Modal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Receipt } from "@/components/Receipt";
 import { useApp } from "@/store/AppContext";
 import { showToast } from "@/components/Toast";
 import { type TransactionStatus } from "@/lib/pakasir";
@@ -32,6 +33,7 @@ export default function QRPaymentPage() {
   const announcedRef = useRef(false);
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
   const [actionLoading, setActionLoading] = useState<null | "cancel" | "sim">(
     null,
   );
@@ -322,10 +324,22 @@ export default function QRPaymentPage() {
             </button>
           </>
         ) : (
+          <>
+            {status === "completed" ? (
+              <button
+                type="button"
+                onClick={() => setShowReceipt(true)}
+                className="btn-secondary w-full"
+              >
+                <Icon name="receipt" size={16} />
+                Struk Pembayaran
+              </button>
+            ) : null}
             <Link to="/" className="inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] bg-[#D71920] px-5 py-3 text-sm font-extrabold text-white shadow-card transition active:scale-[0.98]">
             <Icon name="house" size={16} />
             Kembali ke Beranda
           </Link>
+          </>
         )}
       </div>
 
@@ -349,14 +363,32 @@ export default function QRPaymentPage() {
             type="button"
             onClick={() => {
               setShowSuccess(false);
+              setShowReceipt(true);
+            }}
+            className="btn-secondary mt-2 w-full"
+          >
+            <Icon name="receipt" size={16} />
+            Lihat Struk
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSuccess(false);
               navigate("/laporan");
             }}
-            className="btn-primary mt-2 w-full"
+            className="btn-primary w-full"
           >
             Lihat Laporan
           </button>
         </div>
       </Modal>
+
+      <Receipt
+        open={showReceipt}
+        onClose={() => setShowReceipt(false)}
+        tx={tx}
+        merchantName={config.merchantName}
+      />
 
       <ConfirmDialog
         open={cancelConfirmOpen}
