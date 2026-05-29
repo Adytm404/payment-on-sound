@@ -27,6 +27,7 @@ model User {
   planOrders   PlanOrder[]
   withdrawalRequests WithdrawalRequest[]
   passwordResetTokens PasswordResetToken[]
+  pushSubscriptions PushSubscription[]
   plan         Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   @@index([planId], map: "idx_users_plan_id")
@@ -264,4 +265,18 @@ model PasswordResetToken {
 
   @@index([token], map: "idx_password_reset_token")
   @@map("password_reset_tokens")
+}
+
+model PushSubscription {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  endpoint  String   @unique @db.VarChar(500)
+  p256dh    String   @db.VarChar(255)
+  auth      String   @db.VarChar(255)
+  userAgent String?  @map("user_agent") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_push_subscriptions_user_id")
+  @@map("push_subscriptions")
 }
