@@ -3,6 +3,9 @@ import { prisma } from "../db";
 import { transactionDetail, type PakasirConfig } from "./pakasir";
 import { getSettlementAt } from "./settlement";
 import { broadcastToUser } from "../realtime";
+import { sendPushToUser } from "./push";
+
+const rupiah = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
 
 export type SyncResult = {
   transaction: Transaction;
@@ -40,6 +43,16 @@ export async function syncTransactionStatus(tx: Transaction, config: PakasirConf
       type: "transaction:updated",
       orderId: updated.orderId,
       status: updated.status,
+    });
+  }
+
+  if (justCompleted) {
+    // Fire-and-forget push so notifications reach merchants even with the app closed.
+    void sendPushToUser(tx.userId, {
+      title: "Pembayaran diterima",
+      body: `${rupiah.format(updated.amount)} telah masuk.`,
+      url: `/transaksi/${updated.orderId}`,
+      tag: `tx-${updated.orderId}`,
     });
   }
 
