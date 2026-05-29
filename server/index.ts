@@ -12,6 +12,7 @@ import { adminRouter } from "./routes/admin";
 import { plansRouter } from "./routes/plans";
 import { duitkuRouter } from "./routes/duitku";
 import { withdrawalsRouter } from "./routes/withdrawals";
+import { pakasirRouter } from "./routes/pakasir";
 import { startReconciliationLoop } from "./utils/reconcile";
 
 const app = express();
@@ -36,6 +37,7 @@ app.use("/api/public", publicRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/plans", plansRouter);
 app.use("/api/duitku", duitkuRouter);
+app.use("/api/pakasir", pakasirRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
