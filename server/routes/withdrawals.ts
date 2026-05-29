@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
-import { requireActiveUser } from "../middleware/admin";
+import { requireActiveUser, requireVerifiedEmail } from "../middleware/admin";
 import { broadcastToUser } from "../realtime";
 import { toJson } from "../utils/json";
 import { generateOrderId } from "../utils/orderId";
@@ -39,7 +39,7 @@ router.get("/", async (req, res) => {
   res.json({ data: toJson(withdrawals) });
 });
 
-router.post("/", requireActiveUser, async (req, res) => {
+router.post("/", requireVerifiedEmail, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(422).json({ message: "Data penarikan tidak valid" });

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Prisma, type TransactionStatus } from "@prisma/client";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
-import { requireActiveUser } from "../middleware/admin";
+import { requireActiveUser, requireVerifiedEmail } from "../middleware/admin";
 import { generateOrderId } from "../utils/orderId";
 import { cancelTransaction, createQris, simulatePayment, transactionDetail } from "../utils/pakasir";
 import { toJson } from "../utils/json";
@@ -123,7 +123,7 @@ router.delete("/", requireActiveUser, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/", requireActiveUser, async (req, res) => {
+router.post("/", requireVerifiedEmail, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(422).json({ message: "Data transaksi tidak valid" });

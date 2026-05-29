@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
-import { requireActiveUser } from "../middleware/admin";
+import { requireActiveUser, requireVerifiedEmail } from "../middleware/admin";
 import { broadcastToUser } from "../realtime";
 import { bankNameByCode } from "../utils/banks";
 
@@ -129,7 +129,7 @@ router.put("/", requireActiveUser, async (req, res) => {
   res.json({ settings: shape(settings) });
 });
 
-router.post("/submit-verification", requireActiveUser, async (req, res) => {
+router.post("/submit-verification", requireVerifiedEmail, async (req, res) => {
   const userId = BigInt(req.auth!.userId);
   const settings = await prisma.userSettings.findUnique({ where: { userId } });
   if (!settings) {
