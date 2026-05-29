@@ -4,7 +4,6 @@ import { Header } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { useApp } from "@/store/AppContext";
 import { showToast } from "@/components/Toast";
-import { storage } from "@/lib/storage";
 import { useSpeechVoices } from "@/hooks/useSpeechVoices";
 import { speakText } from "@/lib/tts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -39,7 +38,7 @@ export default function SettingsPage() {
   const [ttsPitch, setTtsPitch] = useState(config.ttsPitch);
   const [ttsVolume, setTtsVolume] = useState(config.ttsVolume);
   const [dangerOpen, setDangerOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<null | "transactions" | "all" | "logout">(
+  const [confirmAction, setConfirmAction] = useState<null | "transactions" | "logout">(
     null,
   );
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
@@ -174,13 +173,6 @@ export default function SettingsPage() {
     await api.clearTransactions();
     await refresh();
     showToast("Riwayat transaksi dihapus", "info");
-  };
-
-  const handleResetAll = () => {
-    setConfirmAction(null);
-    storage.clearAll();
-    logout();
-    navigate("/login", { replace: true });
   };
 
   const handleLogout = () => {
@@ -503,17 +495,6 @@ export default function SettingsPage() {
               </span>
               <Icon name="chevron-right" size={16} className="text-rose-300" />
             </button>
-            <button
-              type="button"
-              onClick={() => setConfirmAction("all")}
-              className="flex items-center justify-between rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 active:scale-[0.98]"
-            >
-              <span className="flex items-center gap-2">
-                <Icon name="rotate-ccw" size={16} />
-                Reset Semua Data
-              </span>
-              <Icon name="chevron-right" size={16} className="text-rose-300" />
-            </button>
           </div>
         ) : null}
       </section>
@@ -546,20 +527,10 @@ export default function SettingsPage() {
       <ConfirmDialog
         open={confirmAction === "transactions"}
         title="Hapus riwayat transaksi?"
-        description="Semua transaksi lokal akan dihapus dari browser ini. Tindakan ini tidak bisa dibatalkan."
+        description="Semua riwayat transaksi akan dihapus permanen dari akun kamu. Tindakan ini tidak bisa dibatalkan."
         confirmLabel="Hapus riwayat"
         tone="danger"
         onConfirm={handleResetTransactions}
-        onCancel={() => setConfirmAction(null)}
-      />
-
-      <ConfirmDialog
-        open={confirmAction === "all"}
-        title="Reset semua data?"
-        description="Konfigurasi Pakasir, setting suara, dan semua transaksi lokal akan dihapus."
-        confirmLabel="Reset semua"
-        tone="danger"
-        onConfirm={handleResetAll}
         onCancel={() => setConfirmAction(null)}
       />
 
