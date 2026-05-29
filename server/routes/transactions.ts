@@ -79,15 +79,12 @@ router.get("/", async (req, res) => {
     ];
   }
 
-  const [
-    total,
-    data,
-    aggregate,
-    completedCount,
-    pendingCount,
-    pendingAggregate,
-    adminFeeAggregate,
-  ] = await Promise.all([
+  // Summary spans the period/search filter across all statuses, independent of
+  // the selected status tab, so exclude `status` from the summary scope.
+  const summaryWhere: Prisma.TransactionWhereInput = { ...where };
+  delete summaryWhere.status;
+
+  const [total, data, grouped] = await Promise.all([
     prisma.transaction.count({ where }),
     prisma.transaction.findMany({
       where,
@@ -95,22 +92,26 @@ router.get("/", async (req, res) => {
       skip: (page - 1) * limit,
       take: limit,
     }),
-    prisma.transaction.aggregate({ where: { ...where, status: "completed" }, _sum: { amount: true } }),
-    prisma.transaction.count({ where: { ...where, status: "completed" } }),
-    prisma.transaction.count({ where: { ...where, status: "pending" } }),
-    prisma.transaction.aggregate({ where: { ...where, status: "pending" }, _sum: { amount: true } }),
-    prisma.transaction.aggregate({ where: { ...where, status: "completed" }, _sum: { fee: true } }),
+    prisma.transaction.groupBy({
+      by: ["status"],
+      where: summaryWhere,
+      _sum: { amount: true, fee: true },
+      _count: true,
+    }),
   ]);
+
+  const completed = grouped.find((g) => g.status === "completed");
+  const pending = grouped.find((g) => g.status === "pending");
 
   res.json({
     data: shape(data),
     pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
     summary: {
-      income: aggregate._sum.amount ?? 0,
-      pending: pendingAggregate._sum.amount ?? 0,
-      adminFee: adminFeeAggregate._sum.fee ?? 0,
-      completedCount,
-      pendingCount,
+      income: completed?._sum.amount ?? 0,
+      pending: pending?._sum.amount ?? 0,
+      adminFee: completed?._sum.fee ?? 0,
+      completedCount: completed?._count ?? 0,
+      pendingCount: pending?._count ?? 0,
     },
   });
 });
