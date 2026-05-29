@@ -207,6 +207,7 @@ model Transaction {
   @@index([userId, status, createdAt], map: "idx_user_status_created")
   @@index([userId, status, settledAt], map: "idx_user_status_settled_at")
   @@index([userId, createdAt], map: "idx_user_created")
+  @@index([orderId], map: "idx_transactions_order_id")
   @@map("transactions")
 }
 
