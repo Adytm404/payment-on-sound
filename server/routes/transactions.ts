@@ -5,11 +5,12 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { requireActiveUser, requireVerifiedEmail } from "../middleware/admin";
 import { generateOrderId } from "../utils/orderId";
-import { cancelTransaction, createQris, simulatePayment, transactionDetail } from "../utils/pakasir";
+import { cancelTransaction, createQris, simulatePayment } from "../utils/pakasir";
 import { toJson } from "../utils/json";
 import { broadcastToUser } from "../realtime";
 import { getUserPlan, monthStart, retentionStart } from "../utils/plans";
-import { getSettlementAt, wibStartOfToday, wibStartDaysAgo } from "../utils/settlement";
+import { wibStartOfToday, wibStartDaysAgo } from "../utils/settlement";
+import { syncTransactionStatus } from "../utils/transactionSync";
 
 const router = Router();
 router.use(requireAuth);
@@ -252,25 +253,8 @@ router.post("/:orderId/check", async (req, res) => {
   }
   try {
     const settings = await getSettings(userId);
-    const detail = await transactionDetail({ config: settings, orderId: tx.orderId, amount: tx.amount });
-    const statusChanged = tx.status !== detail.transaction.status;
-    const completedAt = detail.transaction.completed_at ? new Date(detail.transaction.completed_at) : tx.completedAt;
-    const updated = await prisma.transaction.update({
-      where: { id: tx.id },
-      data: {
-        status: detail.transaction.status,
-        completedAt,
-        settledAt: detail.transaction.status === "completed" && completedAt ? tx.settledAt ?? getSettlementAt(completedAt) : null,
-      },
-    });
-    if (statusChanged) {
-      broadcastToUser(userId, "transaction:updated", {
-        type: "transaction:updated",
-        orderId: updated.orderId,
-        status: updated.status,
-      });
-    }
-    res.json({ transaction: shape(updated) });
+    const { transaction } = await syncTransactionStatus(tx, settings);
+    res.json({ transaction: shape(transaction) });
   } catch (err) {
     res.status(400).json({ message: err instanceof Error ? err.message : "Gagal cek transaksi" });
   }

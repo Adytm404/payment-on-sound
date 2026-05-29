@@ -1,7 +1,5 @@
 import { prisma } from "../db";
-import { transactionDetail } from "./pakasir";
-import { getSettlementAt } from "./settlement";
-import { broadcastToUser } from "../realtime";
+import { syncTransactionStatus } from "./transactionSync";
 
 // Only poll the provider for reasonably recent pending transactions, so we
 // don't hammer the upstream API for ancient orders that will never complete.
@@ -43,28 +41,11 @@ export async function reconcilePendingTransactions(): Promise<ReconcileResult> {
       }
       result.checked += 1;
       try {
-        const detail = await transactionDetail({
-          config: { project: settings.pakasirProject, apiKey: settings.pakasirApiKey },
-          orderId: tx.orderId,
-          amount: tx.amount,
+        const { statusChanged } = await syncTransactionStatus(tx, {
+          project: settings.pakasirProject,
+          apiKey: settings.pakasirApiKey,
         });
-        if (detail.transaction.status === tx.status) continue;
-
-        const completedAt = detail.transaction.completed_at ? new Date(detail.transaction.completed_at) : tx.completedAt;
-        await prisma.transaction.update({
-          where: { id: tx.id },
-          data: {
-            status: detail.transaction.status,
-            completedAt,
-            settledAt: detail.transaction.status === "completed" && completedAt ? tx.settledAt ?? getSettlementAt(completedAt) : null,
-          },
-        });
-        result.updated += 1;
-        broadcastToUser(tx.userId, "transaction:updated", {
-          type: "transaction:updated",
-          orderId: tx.orderId,
-          status: detail.transaction.status,
-        });
+        if (statusChanged) result.updated += 1;
       } catch {
         result.errors += 1;
       }

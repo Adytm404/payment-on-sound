@@ -1,10 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../db";
-import { transactionDetail } from "../utils/pakasir";
 import { publicTransaction } from "../utils/transactionPresenter";
-import { broadcastToUser } from "../realtime";
 import { getUserPlan } from "../utils/plans";
-import { getSettlementAt } from "../utils/settlement";
+import { syncTransactionStatus } from "../utils/transactionSync";
 
 const router = Router();
 
@@ -52,42 +50,11 @@ router.post("/transactions/:orderId/check", async (req, res) => {
   }
 
   try {
-    const detail = await transactionDetail({
-      config: {
-        project: settings.pakasirProject,
-        apiKey: settings.pakasirApiKey,
-      },
-      orderId: tx.orderId,
-      amount: tx.amount,
+    const { transaction } = await syncTransactionStatus(tx, {
+      project: settings.pakasirProject,
+      apiKey: settings.pakasirApiKey,
     });
-
-    const statusChanged = tx.status !== detail.transaction.status;
-    const completedAt = detail.transaction.completed_at
-      ? new Date(detail.transaction.completed_at)
-      : tx.completedAt;
-    const updated = await prisma.transaction.update({
-      where: { id: tx.id },
-      data: {
-        status: detail.transaction.status,
-        completedAt,
-        settledAt: detail.transaction.status === "completed" && completedAt ? tx.settledAt ?? getSettlementAt(completedAt) : null,
-      },
-      include: {
-        user: {
-          include: { settings: true },
-        },
-      },
-    });
-
-    if (statusChanged) {
-      broadcastToUser(tx.userId, "transaction:updated", {
-        type: "transaction:updated",
-        orderId: updated.orderId,
-        status: updated.status,
-      });
-    }
-
-    res.json({ transaction: publicTransaction(updated) });
+    res.json({ transaction: publicTransaction({ ...transaction, user: tx.user }) });
   } catch (err) {
     res.status(400).json({
       message: err instanceof Error ? err.message : "Gagal cek transaksi",
