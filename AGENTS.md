@@ -68,6 +68,16 @@ VITE_API_BASE_URL="/api"
 PYTHON_BIN="py"
 EDGE_TTS_VOICE="id-ID-GadisNeural"
 TTS_CACHE_DIR="storage/tts"
+
+# Web Push (VAPID). Generate with: node -e "console.log(require('web-push').generateVAPIDKeys())"
+VAPID_PUBLIC_KEY=""
+VAPID_PRIVATE_KEY=""
+VAPID_SUBJECT="mailto:admin@pasound.app"
+
+# Reconciliation loop (optional; defaults shown). Set RECONCILE_ENABLED=false on
+# all but one instance when running multiple instances.
+# RECONCILE_ENABLED=true
+# RECONCILE_INTERVAL_MS=60000
 ```
 
 MySQL is expected at:
@@ -297,3 +307,66 @@ Manual test flow:
 6. Check/simulate payment if sandbox.
 7. Confirm transaction appears in `/laporan`.
 8. Confirm Dashboard latest transactions update.
+
+## Growth Features (added later)
+
+These were added after the initial docs above; some earlier notes (e.g. merchant
+self-serving Pakasir keys) are superseded by the admin-managed verification flow.
+
+### Pakasir Webhook
+
+- Endpoint: `POST /api/pakasir/webhook` (public, unauthenticated).
+- Configure the Webhook URL per-project in the Pakasir dashboard to point at
+  `https://<api-domain>/api/pakasir/webhook`. One URL serves all merchants; the
+  body carries `project` + `order_id`.
+- Pakasir webhooks are unsigned, so the body is treated only as a trigger: we
+  look up the order, sanity-check `amount`/`project`, then re-verify the real
+  status via `transactiondetail` using the merchant's credentials before
+  applying changes. Unknown/already-final orders are acked with 200.
+- For local dev, expose the endpoint with a tunnel (e.g. ngrok) and set that URL
+  in Pakasir.
+- Status reconciliation logic is shared in `server/utils/transactionSync.ts`
+  (`syncTransactionStatus`), used by the check routes, the reconciler, and the
+  webhook.
+
+### Web Push Notifications (PWA)
+
+- App is installable via `vite-plugin-pwa` (injectManifest); custom service
+  worker at `src/sw.ts` handles `push` and `notificationclick`.
+- Requires VAPID keys in `.env` (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+  `VAPID_SUBJECT`). Generate with
+  `node -e "console.log(require('web-push').generateVAPIDKeys())"`.
+- Endpoints: `GET /api/push/public-key`, `POST /api/push/subscribe`,
+  `POST /api/push/unsubscribe`. Table: `push_subscriptions`.
+- A "payment received" push is sent from `syncTransactionStatus` when a tx
+  completes (works even with the app closed). Opt-in toggle is in Settings.
+- Note: the service worker is disabled in `vite` dev (`devOptions.enabled:false`).
+  Test push using `npm run build` + `npm run preview` over HTTPS.
+
+### Digital Receipt
+
+- `src/components/Receipt.tsx` renders a completed transaction to a canvas PNG
+  for download/share (Web Share API with WhatsApp + download fallback). Reachable
+  from the QR payment success modal and completed-transaction actions.
+
+### Quick Amount Presets
+
+- Merchants store up to 8 preset nominals (`user_settings.quick_amounts`,
+  comma-separated). Edited in Settings, surfaced as one-tap buttons on
+  `/transaksi/baru` (falls back to defaults when empty).
+- Pakasir requires a unique `amount` + `order_id` per transaction, so this is
+  preset-driven, NOT a reusable open-amount static QR.
+
+### Income Analytics
+
+- `GET /api/dashboard/analytics?range=7d|30d` returns daily income time-series +
+  busy-hour breakdown for completed transactions, bucketed by WIB and bounded by
+  plan report retention. Rendered on the dashboard with hand-rolled SVG/flex
+  charts (no chart library).
+
+### New tables since initial docs
+
+`plans`, `plan_orders`, `promo_codes`, `platform_settings`, `withdrawal_requests`,
+`password_reset_tokens`, `push_subscriptions` (plus many added columns on
+`users` and `user_settings`). See `prisma/schema.prisma` for the source of truth.
+
